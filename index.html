@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Ant的装逼网页</title>
+
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/upload.css">
+</head>
+<body>
+
+<!-- ==================== 页头 ==================== -->
+<header class="site-header">
+  <div class="wrap nav">
+
+    <a class="logo" href="index.html">
+      <img class="logo__img" src="assets/img/gobagame-dark.png" alt="GOBAgame">
+    </a>
+
+    <nav class="nav-links">
+      <a href="index.html" class="is-active">首页</a>
+      <a href="#games">游戏库</a>
+      <a href="#about">关于</a>
+    </nav>
+
+    <div class="nav-actions">
+      <button class="btn" type="button">订阅更新</button>
+    </div>
+
+  </div>
+</header>
+
+<!-- ==================== 站点介绍区 ==================== -->
+<section class="intro">
+  <div class="wrap intro__inner">
+
+    <div class="intro__main">
+
+      <h1 class="intro__title">这里是我做的小游戏</h1>
+
+      <p class="intro__desc">
+        Godot + 原生 Canvas 做的小东西，做完了就丢上来。<br>点开就能玩，手机也能开。
+      </p>
+
+      <div class="intro__chips">
+        <span class="chip">独立开发</span>
+        <span class="chip">随手做</span>
+      </div>
+
+    </div>
+
+    <div class="intro__avatar">
+      <img src="assets/img/avatar.jpg" alt="头像">
+    </div>
+
+  </div>
+</section>
+
+<!-- ==================== 主体（单栏） ==================== -->
+<main class="wrap page-body">
+
+  <!-- ---------- 已发布的游戏 ---------- -->
+  <section class="games" id="games">
+    <div class="sec-title">
+      <h2>游戏库</h2>
+      <span class="games__count" id="gamesCount"></span>
+    </div>
+
+    <div class="game-grid" id="gameGrid">
+    </div>
+
+    <div class="empty" id="emptyState">
+      <p>还没有游戏，敬请期待。</p>
+    </div>
+  </section>
+
+  <!-- ---------- 关于 ---------- -->
+  <section class="about" id="about">
+    <div class="sec-title">
+      <h2>关于</h2>
+    </div>
+
+    <div class="about__grid">
+
+      <div class="about__card">
+        <h3 class="about__card-title">无</h3>
+        <p class="about__card-text">
+          一个放我自己做的小游戏的地方
+        </p>
+      </div>
+
+      <div class="about__card">
+        <h3 class="about__card-title">无</h3>
+        <p class="about__card-text">
+          用 Godot 引擎开发，导出成网页版本，直接放进来就能玩。
+        </p>
+      </div>
+
+      <div class="about__card">
+        <h3 class="about__card-title">不要联系</h3>
+        <p class="about__card-text">
+          弑神
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ---------- 留言入口 ---------- -->
+  <section class="about" id="guestbook">
+    <div class="sec-title">
+      <h2>留言</h2>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+                padding:26px 24px;box-shadow:var(--shadow-sm);text-align:center;">
+      <p style="font-size:var(--fs-sm);color:var(--ink-2);margin-bottom:18px;">
+        不用注册，填个名字就能说。想说什么都行。
+      </p>
+      <a class="btn" href="guestbook.html"
+         style="display:inline-block;text-decoration:none;padding:10px 32px;">
+        去留言板 →
+      </a>
+    </div>
+  </section>
+
+</main>
+
+<!-- ==================== 页脚 ==================== -->
+<footer class="site-footer">
+  <div class="wrap site-footer__inner">
+
+    <div>© 2026 <b>GOBAgame</b> · 自己搭的小站</div>
+
+    <nav class="site-footer__nav">
+      <a href="#about">关于</a>
+      <a href="#games">游戏库</a>
+      <a href="guestbook.html">留言</a>
+    </nav>
+
+  </div>
+</footer>
+
+<!-- 游戏清单：加游戏时在这里加一条，双击打开也能显示 -->
+<script>
+window.ANT_GAMES = [
+   {
+    "file": "rogue/index.html",
+    "title": "打爆他们的脑阔 · 深渊回响",
+    "size": 559123,
+    "addedAt": "2026-10-07T05:10:00.000Z",
+    "engine": "HTML5"
+   },
+   {
+    "file": "match3/index.html",
+    "title": "消消乐 · Match-3",
+    "size": 1091102,
+    "addedAt": "2026-10-06T00:30:00.000Z",
+    "engine": "GODOT"
+   },
+   {
+    "file": "pixel-strike/index.html",
+    "title": "像素突击",
+    "size": 4959299,
+    "addedAt": "2026-10-05T09:22:00.000Z",
+    "engine": "GODOT"
+   },
+   {
+    "file": "giant-ant/index.html",
+    "title": "进击的巨蚁",
+    "size": 4951492,
+    "addedAt": "2026-10-05T10:47:00.000Z",
+    "engine": "GODOT"
+   },
+   {
+    "file": "neon-drift/index.html",
+    "title": "NEON DRIFT · 霓虹漂移",
+    "size": 11919,
+    "addedAt": "2026-10-05T14:10:00.000Z",
+    "engine": "HTML5"
+   },
+   {
+    "file": "lumen/index.html",
+    "title": "LUMEN · 光链",
+    "size": 12797,
+    "addedAt": "2026-10-05T14:10:00.000Z",
+    "engine": "HTML5"
+   },
+   {
+    "file": "orbital/index.html",
+    "title": "ORBITAL · 星环",
+    "size": 12359,
+    "addedAt": "2026-10-05T14:10:00.000Z",
+    "engine": "HTML5"
+   },
+   {
+    "file": "pixel-puzzle/index.html",
+    "title": "暗室 · DARKROOM",
+    "size": 23289,
+    "addedAt": "2026-10-06T07:50:00.000Z",
+    "engine": "HTML5"
+   }
+  ];
+</script>
+<script src="assets/js/games.js"></script>
+</body>
+</html>

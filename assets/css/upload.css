@@ -1,0 +1,515 @@
+/* ============================================================
+   页面内容样式 · upload.css
+   ------------------------------------------------------------
+   依赖：style.css（需先引入）
+   目录
+   01. 站点介绍区
+   02. 上传区容器
+   03. 拖拽框
+   04. 状态提示与进度条
+   05. 游戏卡片网格
+   06. 空状态
+   07. 关于区卡片
+   08. 响应式
+   ============================================================ */
+
+
+/* ============================================================
+   01. 站点介绍区
+   ============================================================ */
+.intro{
+  padding: 58px 0 46px;
+  border-bottom: 1px solid var(--line);
+}
+
+.intro__inner{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 44px;
+  flex-wrap: wrap;
+}
+
+.intro__main{
+  max-width: 60ch;
+}
+
+/* 【可改】主标题大小、字距在这里 */
+.intro__title{
+  font-family: var(--serif);
+  font-size: 40px;
+  font-weight: 600;
+  line-height: 1.28;
+  letter-spacing: -.5px;
+  margin: 0 0 16px;
+}
+
+.intro__desc{
+  margin: 0 0 20px;
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--ink-2);
+}
+
+/* 标签胶囊 */
+.intro__chips{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+.chip{
+  padding: 5px 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+/* 右侧头像 */
+.intro__avatar{
+  flex: none;
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #e8ded4, #cfb9a5);
+  color: #7a5f45;
+  font-family: var(--serif);
+  font-size: 44px;
+  font-weight: 700;
+  border: 5px solid var(--surface);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;          /* 让图片被圆形裁切 */
+}
+
+/* 头像图片：铺满圆形容器 */
+.intro__avatar img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+
+/* ============================================================
+   02. 上传区容器
+   ============================================================ */
+.uploader{
+  margin-bottom: 60px;
+}
+
+/* 页面首屏无 Hero 时，主体区顶部留白加大 */
+.page-body > .uploader:first-child{
+  padding-top: 12px;
+}
+
+
+/* ============================================================
+   03. 拖拽框
+   ============================================================ */
+.dropzone{
+  /* 虚线方框：未激活状态 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 240px;
+  padding: 44px 32px;
+  border: 2px dashed var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  text-align: center;
+  cursor: pointer;
+  outline: none;
+  transition: border-color .2s ease, background .2s ease, transform .2s ease;
+}
+
+.dropzone:hover,
+.dropzone:focus-visible{
+  border-color: var(--ink-3);
+  background: #fffdfa;
+}
+
+/* 拖拽悬停时的激活状态 */
+.dropzone.is-dragover{
+  border-color: var(--accent);
+  border-style: solid;
+  background: var(--accent-soft);
+  transform: scale(1.008);
+}
+
+/* 上传中：禁止再拖 */
+.dropzone.is-busy{
+  pointer-events: none;
+  opacity: .6;
+}
+
+.dropzone__icon{
+  width: 44px;
+  height: 44px;
+  margin-bottom: 8px;
+  color: var(--ink-3);
+  transition: color .2s ease, transform .2s ease;
+}
+.dropzone:hover .dropzone__icon,
+.dropzone.is-dragover .dropzone__icon{
+  color: var(--accent);
+}
+.dropzone.is-dragover .dropzone__icon{
+  transform: translateY(-3px);
+}
+
+.dropzone__title{
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.dropzone__hint{
+  font-size: 14px;
+  color: var(--ink-2);
+  margin: 0;
+}
+
+.dropzone__link{
+  color: var(--accent);
+  border-bottom: 1px solid rgba(180,85,45,.35);
+}
+
+.dropzone__note{
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+
+/* ============================================================
+   04. 状态提示与进度条
+   ============================================================ */
+.upload-status{
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 13px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  line-height: 1.6;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-2);
+}
+
+.upload-status::before{
+  content: "";
+  flex: none;
+  width: 4px;
+  align-self: stretch;
+  border-radius: 2px;
+  background: var(--ink-3);
+}
+
+/* 成功 */
+.upload-status.is-success{
+  border-color: #cfe3d4;
+  background: #f4faf5;
+  color: #2c5d3a;
+}
+.upload-status.is-success::before{ background: #4a8f5f; }
+
+/* 失败 */
+.upload-status.is-error{
+  border-color: #edcfc8;
+  background: #fdf5f3;
+  color: #8c3a24;
+}
+.upload-status.is-error::before{ background: var(--accent); }
+
+/* 进行中 */
+.upload-status.is-info{
+  border-color: var(--line);
+  background: var(--surface-2);
+}
+.upload-status.is-info::before{ background: var(--accent); }
+
+.progress{
+  height: 3px;
+  margin-top: 10px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+.progress__bar{
+  width: 0;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  transition: width .18s ease;
+}
+
+
+/* ============================================================
+   05. 游戏卡片网格
+   ============================================================ */
+.games__count{
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+}
+
+.game-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.game-card{
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+  transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease;
+}
+.game-card:hover{
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  border-color: #ddd6cc;
+}
+
+/* 卡片缩略图区 */
+.game-card__cover{
+  position: relative;
+  height: 140px;
+  background: linear-gradient(135deg, #2f3a34, #5b6b5e 60%, #8a9a7f);
+}
+.game-card__badge{
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(255,255,255,.9);
+  color: #3a4a3f;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .5px;
+}
+
+.game-card__body{
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 15px 16px 16px;
+}
+
+.game-card__title{
+  font-size: 15.5px;
+  font-weight: 600;
+  line-height: 1.45;
+  margin: 0 0 6px;
+  /* 标题最多两行 */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.game-card__meta{
+  margin: 0 0 14px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.game-card__actions{
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+.game-card__actions .btn{
+  flex: 1;
+  justify-content: center;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+
+/* ============================================================
+   06. 空状态
+   ============================================================ */
+.empty{
+  padding: 44px 24px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  text-align: center;
+  color: var(--ink-3);
+  font-size: 14px;
+}
+.empty[hidden]{ display: none; }
+
+
+/* ============================================================
+   07. 关于区卡片
+   ============================================================ */
+.about{
+  margin-top: 68px;
+}
+
+.about__grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.about__card{
+  padding: 22px 22px 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  transition: border-color .2s ease, transform .2s ease;
+}
+.about__card:hover{
+  border-color: #ddd6cc;
+  transform: translateY(-2px);
+}
+
+/* 卡片顶部小短横 */
+.about__card::before{
+  content: "";
+  display: block;
+  width: 26px;
+  height: 3px;
+  margin-bottom: 15px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.about__card-title{
+  font-size: 16.5px;
+  font-weight: 700;
+  margin: 0 0 9px;
+}
+
+.about__card-text{
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.75;
+  color: var(--ink-2);
+}
+
+
+/* ============================================================
+   08. 响应式
+   ============================================================ */
+@media (max-width: 720px){
+  .intro{
+    padding: 38px 0 32px;
+  }
+  .intro__title{
+    font-size: 28px;
+  }
+  .intro__avatar{
+    width: 92px;
+    height: 92px;
+    font-size: 32px;
+  }
+}
+
+@media (max-width: 560px){
+  .dropzone{
+    min-height: 200px;
+    padding: 34px 20px;
+  }
+  .dropzone__title{ font-size: 15.5px; }
+  .game-grid{ grid-template-columns: 1fr; }
+  .about{ margin-top: 50px; }
+}
+
+
+/* ============================================================
+   09. 封面图 + 发行商品牌（GOBAgame）
+   ============================================================ */
+
+/* 封面兜底底色（没图时也不会难看） */
+.game-card__cover{
+  background: linear-gradient(135deg, #22262e, #3a4150 60%, #565f70);
+}
+
+/* 封面图：铺满、裁切 */
+.game-card__cover-img{
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* 底部渐隐，让品牌标识更清楚 */
+.game-card__cover::after{
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 54%;
+  background: linear-gradient(to top, rgba(8,9,13,.58), rgba(8,9,13,0));
+  pointer-events: none;
+}
+
+/* 引擎标签压在渐隐层之上 */
+.game-card__badge{ z-index: 2; }
+
+/* 发行商徽标 GOBAgame */
+.game-card__brand{
+  position: absolute;
+  right: 10px;
+  bottom: 9px;
+  z-index: 2;
+  line-height: 0;
+  padding: 4px 8px 5px;
+  border-radius: 5px;
+  background: rgba(10,11,15,.45);
+  border: 1px solid rgba(255,255,255,.14);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+.game-card__brand img{
+  display: block;
+  height: 11px;
+  width: auto;
+}
+
+/* 无封面图时的品牌面板：只用 GOBAgame 标识，不放游戏截图 */
+.game-card__cover--brand{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(120% 130% at 16% 0%, rgba(255,255,255,.10), rgba(255,255,255,0) 58%),
+    linear-gradient(135deg, #1d212a, #333a47 55%, #4b5361);
+}
+.game-card__cover--brand .game-card__mark{
+  display: block;
+  width: min(48%, 158px);
+  height: auto;
+  opacity: .9;
+  filter: drop-shadow(0 2px 12px rgba(0,0,0,.4));
+}
+/* 品牌面板不需要底部渐隐（那是给封面图压字的） */
+.game-card__cover--brand::after{ display: none; }
+
+/* 页头品牌标识 */
+.logo__img{
+  display: block;
+  height: 24px;
+  width: auto;
+}
+@media (max-width: 560px){
+  .logo__img{ height: 20px; }
+}
+
+/* 游戏页启动时的品牌闪屏样式是内联注入的（游戏页不加载本文件） */
+

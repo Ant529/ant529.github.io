@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>暗室 · DARKROOM</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:#07070d}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",monospace;
+  color:#e8e8f4;display:flex;align-items:center;justify-content:center;user-select:none;
+}
+canvas{display:block;touch-action:none;image-rendering:pixelated;
+  border-radius:6px;box-shadow:0 0 0 2px #1e1e34,0 20px 70px rgba(0,0,0,.7)}
+.hud{position:fixed;top:0;left:0;right:0;padding:12px 16px;display:flex;
+  align-items:center;justify-content:space-between;z-index:9;pointer-events:none;
+  background:linear-gradient(180deg,rgba(0,0,0,.65),transparent)}
+.hud__t{font-size:12px;letter-spacing:.3em;color:rgba(255,255,255,.5)}
+.hud__r{display:flex;gap:10px;align-items:center;font-size:12px;letter-spacing:.1em}
+.chip{display:flex;align-items:center;gap:6px;color:rgba(255,255,255,.62);
+  padding:5px 11px;border-radius:99px;background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.1)}
+.dot{width:10px;height:10px;border-radius:2px;display:inline-block}
+.exit{pointer-events:auto;color:rgba(255,255,255,.6);text-decoration:none;cursor:pointer;
+  font-family:inherit;border:1px solid rgba(255,255,255,.2);padding:5px 13px;border-radius:99px;
+  font-size:11px;backdrop-filter:blur(8px);background:rgba(255,255,255,.04)}
+.exit:hover{color:#fff;border-color:rgba(255,255,255,.5)}
+.tip{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
+  font-size:12px;color:rgba(255,255,255,.55);letter-spacing:.08em;text-align:center;
+  background:rgba(0,0,0,.45);padding:8px 20px;border-radius:99px;
+  backdrop-filter:blur(8px);z-index:9;transition:bottom .2s;max-width:92vw}
+.tip b{color:#4de2ff}
+.goal{position:fixed;top:56px;left:50%;transform:translateX(-50%);
+  font-size:12.5px;line-height:1.85;color:rgba(255,255,255,.8);text-align:center;
+  background:rgba(10,10,22,.9);padding:12px 22px;border-radius:12px;
+  border:1px solid #2a2a48;z-index:10;backdrop-filter:blur(10px);
+  transition:opacity .5s;max-width:92vw}
+.goal b{color:#4de2ff}
+.goal.gone{opacity:0;pointer-events:none}
+.msg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-size:19px;letter-spacing:.16em;color:#fff;text-align:center;line-height:1.9;
+  background:rgba(8,8,18,.95);padding:26px 44px;border-radius:14px;
+  border:1px solid #2a2a48;z-index:20;opacity:0;pointer-events:none;
+  transition:opacity .25s;backdrop-filter:blur(10px)}
+.msg.show{opacity:1}
+.msg b{color:#4de2ff}
+.pad{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:12;
+  display:none;flex-direction:column;gap:7px;align-items:center}
+.pad.on{display:flex}
+.pad .row{display:flex;gap:7px}
+.pad button{width:56px;height:56px;border-radius:14px;border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.08);color:rgba(255,255,255,.88);font-size:18px;
+  backdrop-filter:blur(8px);touch-action:manipulation;font-family:inherit}
+.pad button:active{background:rgba(77,226,255,.3);border-color:rgba(77,226,255,.6)}
+</style>
+</head>
+<body>
+
+<div class="hud">
+  <div class="hud__t">暗室 DARKROOM</div>
+  <div class="hud__r">
+    <div class="chip"><span class="dot" style="background:#ffcc33"></span><span id="keys">0</span></div>
+    <button class="exit" id="rst">重开 R</button>
+    <a class="exit" href="../../index.html">&#8592; 返回</a>
+  </div>
+</div>
+
+<div id="stage"><canvas id="cv"></canvas></div>
+<div class="goal" id="goal">
+  把 <b>木箱</b> 推上 <b>压力板</b> &#8594; 栅栏开启 &#8594; 取 <b>钥匙</b> &#8594; 开门 &#8594; 走到 <b>出口</b>
+</div>
+<div class="tip" id="tip">方向键 / WASD 移动 &nbsp;·&nbsp; R 重开</div>
+
+<div class="pad" id="pad">
+  <div class="row"><button data-d="up">&#9650;</button></div>
+  <div class="row">
+    <button data-d="left">&#9664;</button>
+    <button data-d="down">&#9660;</button>
+    <button data-d="right">&#9654;</button>
+  </div>
+</div>
+
+<div class="msg" id="msg"></div>
+
+<script>
+/* =====================================================================
+   暗室 DARKROOM — 像素机关房间解谜
+   网格移动 + 推箱压板 + 钥匙开门
+   ===================================================================== */
+
+var cv = document.getElementById('cv'), g = cv.getContext('2d');
+
+/* ---------- 常量 ---------- */
+var TS = 32;                 /* 瓦片尺寸（逻辑像素，由 CSS 放大） */
+var COLS = 15, ROWS = 11;
+var W = COLS * TS, H = ROWS * TS;
+cv.width = W; cv.height = H;
+
+/* 地形 */
+var T = { FLOOR: 1, WALL: 2 };
+/* 实体 */
+var E = { PLAYER: 1, BOX: 2, PLATE: 3, GATE: 4, KEY: 5, DOOR: 6, EXIT: 7 };
+
+/* ---------- 关卡 ----------
+   # 墙  . 地板  ^ 尖刺
+   实体（箱子 / 压力板 / 栅栏 / 钥匙 / 门 / 出口）单独列坐标
+--------------------------------------------------------------------- */
+var LEVEL = {
+  name: '第 1 间 · 压力机关',
+  map: [
+    '###############',
+    '#.....#.....#.#',
+    '#.....#.....#.#',
+    '#.....#.....#.#',
+    '#.............#',
+    '#.....#.......#',
+    '#.....#..^^...#',
+    '#.....#.......#',
+    '#.....#.......#',
+    '#.....#.......#',
+    '###############'
+  ],
+  entities: [
+    { t: E.PLAYER, x: 2,  y: 2 },
+    { t: E.BOX,    x: 2,  y: 3 },
+    { t: E.PLATE,  x: 2,  y: 6 },
+    { t: E.GATE,   x: 6,  y: 4 },
+    { t: E.KEY,    x: 11, y: 7 },
+    { t: E.DOOR,   x: 13, y: 3 },
+    { t: E.EXIT,   x: 13, y: 1 }
+  ]
+};
+
+/* ---------- 状态 ---------- */
+var grid, ents, player, keys, won, moves, facing, dead;
+var particles = [];
+var shake = 0;
+var t = 0;
+
+var PAL = {
+  floor:  ['#1c1c2e', '#191926'],
+  wall:   ['#2e2e4a', '#3a3a5c'],
+  wallTop:'#3f3f66',
+  spike:  '#8a8ab0',
+  player: '#4de2ff',
+  box:    '#b4552d',
+  boxLit: '#ffcc33',
+  gate:   '#8b5cf6',
+  key:    '#ffcc33',
+  door:   '#c0392b',
+  exit:   '#3ddc84'
+};
+
+/* ---------- 初始化 ---------- */
+function reset() {
+  grid = [];
+  for (var y = 0; y < ROWS; y++) {
+    grid.push([]);
+    for (var x = 0; x < COLS; x++) {
+      var ch = LEVEL.map[y].charAt(x);
+      grid[y].push(ch === '#' ? T.WALL : T.FLOOR);
+    }
+  }
+  ents = [];
+  LEVEL.entities.forEach(function (e) {
+    ents.push({ t: e.t, x: e.x, y: e.y, on: false, open: false, live: isSpike(e.x, e.y) });
+  });
+  player = ents.filter(function (e) { return e.t === E.PLAYER; })[0];
+  keys = 0; won = false; dead = false; moves = 0; facing = 'down';
+  particles = []; shake = 0;
+  document.getElementById('msg').classList.remove('show');
+  sync();
+  pushBoxes();
+}
+
+function isSpike(x, y) { return LEVEL.map[y].charAt(x) === '^'; }
+
+function sync() {
+  document.getElementById('keys').textContent = keys;
+}
+
+/* ---------- 查询 ---------- */
+function tileAt(x, y) {
+  if (x < 0 || y < 0 || x >= COLS || y >= ROWS) return T.WALL;
+  return grid[y][x];
+}
+function entAt(x, y, ty) {
+  for (var i = 0; i < ents.length; i++) {
+    var e = ents[i];
+    if (e.x !== x || e.y !== y) continue;
+    if (ty !== undefined) { if (e.t === ty) return e; }
+    else if (e.t !== E.PLAYER) return e;   /* 不指定类型时跳过玩家自己 */
+  }
+  return null;
+}
+/* 玩家能否站上去 */
+function isWalkable(x, y) {
+  if (tileAt(x, y) === T.WALL) return false;
+  var e = entAt(x, y);
+  if (!e) return true;
+  if (e.t === E.BOX || e.t === E.DOOR) return false;
+  if (e.t === E.GATE && !e.open) return false;
+  return true;
+}
+/* 箱子能否被推上去：只能进地板 / 压力板 */
+function canBoxGo(x, y) {
+  if (tileAt(x, y) === T.WALL) return false;
+  var e = entAt(x, y);
+  if (!e) return true;
+  return e.t === E.PLATE;
+}
+
+/* ---------- 移动 ---------- */
+var DIRS = { up: { x: 0, y: -1 }, down: { x: 0, y: 1 }, left: { x: -1, y: 0 }, right: { x: 1, y: 0 } };
+
+function tryMove(dir) {
+  if (won || dead) return;
+  var d = DIRS[dir];
+  if (!d) return;
+  facing = dir;
+
+  var nx = player.x + d.x, ny = player.y + d.y;
+
+  /* ---- 前面是箱子 ---- */
+  var box = entAt(nx, ny, E.BOX);
+  if (box) {
+    if (box.on) { shake = 3; toast('箱子已就位，推不动了', 800); return; }
+    var bx = nx + d.x, by = ny + d.y;
+    if (!canBoxGo(bx, by)) { shake = 4; toast('箱子推不过去', 800); return; }
+    box.x = bx; box.y = by;
+    player.x = nx; player.y = ny;
+    moves++;
+    afterMove();
+    return;
+  }
+
+  /* ---- 前面是门 ---- */
+  var door = entAt(nx, ny, E.DOOR);
+  if (door) {
+    if (keys > 0) {
+      keys--;
+      ents.splice(ents.indexOf(door), 1);
+      burst(nx, ny, '192,57,43', 20);
+      player.x = nx; player.y = ny; moves++;
+      sync(); toast('门开了', 800);
+      afterMove();
+    } else {
+      shake = 5;
+      toast('门锁着 —— 需要 <b>钥匙</b>', 1000);
+    }
+    return;
+  }
+
+  /* ---- 前面是栅栏 ---- */
+  var gate = entAt(nx, ny, E.GATE);
+  if (gate && !gate.open) {
+    shake = 5;
+    toast('栅栏没通电 —— 把 <b>木箱</b> 推上压力板', 1300);
+    return;
+  }
+
+  if (!isWalkable(nx, ny)) { shake = 3; return; }
+
+  player.x = nx; player.y = ny;
+  moves++;
+  afterMove();
+}
+
+/* ---------- 移动后结算 ---------- */
+function afterMove() {
+  /* 尖刺 */
+  if (isSpike(player.x, player.y)) {
+    dead = true;
+    shake = 14;
+    burst(player.x, player.y, '138,138,176', 26);
+    toast('被尖刺扎到 —— 重来', 1200);
+    showMsg('&#10060; 踩到尖刺了');
+    setTimeout(reset, 1100);
+    return;
+  }
+
+  /* 钥匙 —— 必须显式指定类型，否则会先匹配到玩家自己 */
+  var k = entAt(player.x, player.y, E.KEY);
+  if (k) {
+    ents.splice(ents.indexOf(k), 1);
+    keys++; sync();
+    burst(k.x, k.y, '255,204,51', 22);
+    toast('拿到 <b>钥匙</b>', 900);
+  }
+
+  checkPlates();
+
+  /* 出口 */
+  var ex = entAt(player.x, player.y, E.EXIT);
+  if (ex) {
+    if (isSolved()) {
+      won = true;
+      showMsg('&#127881; 过关！<br><b>' + moves + '</b> 步');
+    } else {
+      toast('机关还没解开 —— 先压住压力板', 1100);
+    }
+  }
+}
+
+/* ---------- 压力板 ---------- */
+function pushBoxes() {
+  /* 箱子是否压在压力板上（决定发光 / 锁死） */
+  ents.forEach(function (b) {
+    if (b.t !== E.BOX) return;
+    b.on = !!entAt(b.x, b.y, E.PLATE);
+  });
+  /* 压力板是否被压住 */
+  ents.forEach(function (p) {
+    if (p.t !== E.PLATE) return;
+    var lit = !!entAt(p.x, p.y, E.BOX);
+    if (lit !== p.on) {
+      p.on = lit;
+      burst(p.x, p.y, lit ? '61,220,132' : '138,138,176', 18);
+    }
+  });
+}
+
+function checkPlates() {
+  pushBoxes();
+  var plates = ents.filter(function (e) { return e.t === E.PLATE; });
+  var allOn = plates.length > 0 && plates.every(function (p) { return p.on; });
+  ents.forEach(function (e) {
+    if (e.t !== E.GATE) return;
+    if (allOn && !e.open) { e.open = true; burst(e.x, e.y, '139,92,246', 24); shake = 6; }
+    if (!allOn && e.open) { e.open = false; }
+  });
+}
+
+function isSolved() {
+  var plates = ents.filter(function (e) { return e.t === E.PLATE; });
+  if (!plates.length) return true;
+  return plates.every(function (p) { return p.on; });
+}
+
+/* ---------- 粒子 ---------- */
+function burst(tx, ty, col, n) {
+  for (var i = 0; i < n; i++) {
+    var a = Math.random() * 6.283, sp = 0.6 + Math.random() * 2.6;
+    particles.push({
+      x: tx * TS + TS / 2, y: ty * TS + TS / 2,
+      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 1,
+      life: 1, dec: 0.02 + Math.random() * 0.03,
+      s: 1 + Math.random() * 2.6, col: col
+    });
+  }
+}
+
+/* ---------- 提示 ---------- */
+var toastTimer = 0;
+var TIP0 = '方向键 / WASD 移动 &nbsp;·&nbsp; R 重开';
+function toast(html, ms) {
+  var el = document.getElementById('tip');
+  el.innerHTML = html;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { el.innerHTML = TIP0; }, ms || 1400);
+}
+function showMsg(html) {
+  var el = document.getElementById('msg');
+  el.innerHTML = html + '<div style="margin-top:16px;font-size:12px;color:rgba(255,255,255,.5);letter-spacing:.1em">按 R 重开</div>';
+  el.classList.add('show');
+}
+
+/* =====================================================================
+   渲染
+   ===================================================================== */
+function px(v) { return v * TS; }
+
+function roundRect(c, x, y, w, h, r) {
+  c.beginPath();
+  if (c.roundRect) c.roundRect(x, y, w, h, r);
+  else {
+    c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+  }
+}
+
+function drawFloor(x, y) {
+  g.fillStyle = (x + y) % 2 === 0 ? PAL.floor[0] : PAL.floor[1];
+  g.fillRect(px(x), px(y), TS, TS);
+  g.strokeStyle = 'rgba(0,0,0,.26)';
+  g.lineWidth = 1;
+  g.strokeRect(px(x) + 0.5, px(y) + 0.5, TS - 1, TS - 1);
+}
+
+function drawWall(x, y) {
+  g.fillStyle = PAL.wall[0];
+  g.fillRect(px(x), px(y), TS, TS);
+  g.fillStyle = PAL.wallTop;
+  g.fillRect(px(x), px(y), TS, 5);
+  g.fillStyle = PAL.wall[1];
+  g.fillRect(px(x) + 2, px(y) + 8, TS - 4, 9);
+  g.fillRect(px(x) + 2, px(y) + 21, TS - 4, 9);
+  g.fillStyle = 'rgba(0,0,0,.28)';
+  g.fillRect(px(x) + 2, px(y) + 17, TS - 4, 2);
+  g.fillRect(px(x) + 2, px(y) + 30, TS - 4, 2);
+}
+
+function drawSpike(x, y) {
+  drawFloor(x, y);
+  g.fillStyle = PAL.spike;
+  for (var i = 0; i < 3; i++) {
+    var sx = px(x) + 4 + i * 9;
+    g.beginPath();
+    g.moveTo(sx, px(y) + TS - 4);
+    g.lineTo(sx + 4.5, px(y) + 8);
+    g.lineTo(sx + 9, px(y) + TS - 4);
+    g.closePath();
+    g.fill();
+  }
+  g.fillStyle = 'rgba(255,80,80,.28)';
+  g.fillRect(px(x) + 3, px(y) + TS - 6, TS - 6, 3);
+}
+
+function drawPlayer(p) {
+  var cx = px(p.x) + TS / 2, cy = px(p.y) + TS / 2;
+  var bob = Math.sin(t * 4) * 1.2;
+
+  var gl = g.createRadialGradient(cx, cy, 1, cx, cy, TS * 1.5);
+  gl.addColorStop(0, 'rgba(77,226,255,.30)');
+  gl.addColorStop(1, 'rgba(77,226,255,0)');
+  g.fillStyle = gl;
+  g.fillRect(cx - TS * 1.5, cy - TS * 1.5, TS * 3, TS * 3);
+
+  g.fillStyle = PAL.player;
+  roundRect(g, px(p.x) + 7, px(p.y) + 6 + bob, TS - 14, TS - 13, 4);
+  g.fill();
+
+  g.fillStyle = '#0a0a16';
+  var ex = 0, ey = 0;
+  if (facing === 'left') ex = -2;
+  if (facing === 'right') ex = 2;
+  if (facing === 'up') ey = -2;
+  if (facing === 'down') ey = 2;
+  g.fillRect(cx - 5 + ex, cy - 3 + bob + ey, 3.4, 4);
+  g.fillRect(cx + 1.6 + ex, cy - 3 + bob + ey, 3.4, 4);
+
+  g.fillStyle = 'rgba(255,255,255,.5)';
+  g.fillRect(px(p.x) + 9, px(p.y) + 8 + bob, TS - 18, 2);
+}
+
+function drawBox(b) {
+  var cx = px(b.x) + TS / 2, cy = px(b.y) + TS / 2;
+  var col = b.on ? PAL.boxLit : PAL.box;
+
+  if (b.on) {
+    var gl = g.createRadialGradient(cx, cy, 1, cx, cy, TS * 1.5);
+    gl.addColorStop(0, 'rgba(255,204,51,.38)');
+    gl.addColorStop(1, 'rgba(255,204,51,0)');
+    g.fillStyle = gl;
+    g.fillRect(cx - TS * 1.5, cy - TS * 1.5, TS * 3, TS * 3);
+  }
+
+  g.fillStyle = col;
+  roundRect(g, px(b.x) + 3, px(b.y) + 3, TS - 6, TS - 6, 3);
+  g.fill();
+
+  g.strokeStyle = 'rgba(0,0,0,.34)';
+  g.lineWidth = 1.6;
+  g.beginPath();
+  g.moveTo(px(b.x) + 3, px(b.y) + 3); g.lineTo(px(b.x) + TS - 3, px(b.y) + TS - 3);
+  g.moveTo(px(b.x) + TS - 3, px(b.y) + 3); g.lineTo(px(b.x) + 3, px(b.y) + TS - 3);
+  g.stroke();
+  g.strokeRect(px(b.x) + 3.5, px(b.y) + 3.5, TS - 7, TS - 7);
+}
+
+function drawPlate(p) {
+  var lit = p.on, x = px(p.x), y = px(p.y);
+  g.fillStyle = lit ? 'rgba(61,220,132,.24)' : 'rgba(138,138,176,.13)';
+  g.fillRect(x + 2, y + 2, TS - 4, TS - 4);
+  g.strokeStyle = lit ? '#3ddc84' : '#5a5a80';
+  g.lineWidth = 2;
+  g.strokeRect(x + 4.5, y + 4.5, TS - 9, TS - 9);
+  g.fillStyle = lit ? '#3ddc84' : '#5a5a80';
+  if (lit) { g.shadowBlur = 16; g.shadowColor = '#3ddc84'; }
+  g.beginPath();
+  g.arc(x + TS / 2, y + TS / 2, lit ? 5.4 : 3.4, 0, 6.283);
+  g.fill();
+  g.shadowBlur = 0;
+}
+
+function drawGate(gt) {
+  var x = px(gt.x), y = gt.y * TS;
+  if (gt.open) {
+    g.fillStyle = 'rgba(61,220,132,.35)';
+    g.fillRect(x + 1, y + 5, 3, TS - 10);
+    g.fillRect(x + TS - 4, y + 5, 3, TS - 10);
+    return;
+  }
+  g.fillStyle = 'rgba(139,92,246,.20)';
+  g.fillRect(x + 2, y + 2, TS - 4, TS - 4);
+  g.strokeStyle = PAL.gate;
+  g.lineWidth = 2.4;
+  g.shadowBlur = 12; g.shadowColor = PAL.gate;
+  for (var i = 0; i < 3; i++) {
+    g.beginPath();
+    g.moveTo(x + 6 + i * 9, y + 3);
+    g.lineTo(x + 6 + i * 9, y + TS - 3);
+    g.stroke();
+  }
+  g.shadowBlur = 0;
+  g.beginPath();
+  g.moveTo(x + 3, y + TS / 2); g.lineTo(x + TS - 3, y + TS / 2);
+  g.stroke();
+}
+
+function drawKey(k) {
+  var cx = px(k.x) + TS / 2, cy = k.y * TS + TS / 2;
+  var bob = Math.sin(t * 3) * 1.8;
+  g.shadowBlur = 16; g.shadowColor = PAL.key;
+  g.fillStyle = PAL.key;
+  g.beginPath(); g.arc(cx - 3, cy + bob, 5.6, 0, 6.283); g.fill();
+  g.fillStyle = '#1c1c2e';
+  g.beginPath(); g.arc(cx - 3, cy + bob, 2.4, 0, 6.283); g.fill();
+  g.fillStyle = PAL.key;
+  g.fillRect(cx + 1, cy - 1.6 + bob, 11, 3.2);
+  g.fillRect(cx + 8, cy - 1.6 + bob, 2.6, 6);
+  g.fillRect(cx + 11.5, cy - 1.6 + bob, 2.6, 5);
+  g.shadowBlur = 0;
+}
+
+function drawDoor(d) {
+  var x = px(d.x), y = d.y * TS;
+  g.fillStyle = 'rgba(192,57,43,.26)';
+  g.fillRect(x + 2, y + 2, TS - 4, TS - 4);
+  g.strokeStyle = PAL.door;
+  g.lineWidth = 2.4;
+  g.shadowBlur = 12; g.shadowColor = PAL.door;
+  g.strokeRect(x + 4.5, y + 4.5, TS - 9, TS - 9);
+  g.shadowBlur = 0;
+  g.fillStyle = PAL.door;
+  g.fillRect(x + TS / 2 - 2, y + TS / 2 - 4, 4, 7);
+  g.beginPath(); g.arc(x + TS / 2, y + TS / 2 - 4, 3, 0, 6.283); g.fill();
+}
+
+function drawExit(e) {
+  var x = px(e.x), y = e.y * TS;
+  var solved = isSolved();
+  var pulse = 0.5 + Math.sin(t * 3.4) * 0.5;
+  g.fillStyle = solved ? 'rgba(61,220,132,' + (0.16 + pulse * 0.24) + ')' : 'rgba(90,90,120,.18)';
+  g.fillRect(x + 2, y + 2, TS - 4, TS - 4);
+  g.strokeStyle = solved ? PAL.exit : '#5a5a80';
+  g.lineWidth = 2.4;
+  if (solved) { g.shadowBlur = 14 + pulse * 10; g.shadowColor = PAL.exit; }
+  g.strokeRect(x + 4.5, y + 4.5, TS - 9, TS - 9);
+  g.shadowBlur = 0;
+  g.fillStyle = solved ? PAL.exit : '#5a5a80';
+  g.beginPath();
+  g.moveTo(x + TS / 2, y + 9);
+  g.lineTo(x + TS - 9, y + TS / 2 + 2);
+  g.lineTo(x + TS / 2 + 4, y + TS / 2 + 2);
+  g.lineTo(x + TS / 2 + 4, y + TS - 9);
+  g.lineTo(x + TS / 2 - 4, y + TS - 9);
+  g.lineTo(x + TS / 2 - 4, y + TS / 2 + 2);
+  g.lineTo(x + 9, y + TS / 2 + 2);
+  g.closePath();
+  g.fill();
+}
+
+function render() {
+  g.save();
+  if (shake > 0) g.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+
+  for (var y = 0; y < ROWS; y++) {
+    for (var x = 0; x < COLS; x++) {
+      if (grid[y][x] === T.WALL) drawWall(x, y);
+      else if (isSpike(x, y)) drawSpike(x, y);
+      else drawFloor(x, y);
+    }
+  }
+
+  ents.forEach(function (e) { if (e.t === E.EXIT) drawExit(e); });
+
+  ents.forEach(function (e) { if (e.t === E.PLATE) drawPlate(e); });
+  ents.forEach(function (e) { if (e.t === E.KEY) drawKey(e); });
+  ents.forEach(function (e) { if (e.t === E.DOOR) drawDoor(e); });
+  ents.forEach(function (e) { if (e.t === E.GATE) drawGate(e); });
+  ents.forEach(function (e) { if (e.t === E.BOX) drawBox(e); });
+
+  if (player) drawPlayer(player);
+
+  g.globalCompositeOperation = 'lighter';
+  particles.forEach(function (p) {
+    g.globalAlpha = Math.max(0, p.life);
+    g.fillStyle = 'rgba(' + p.col + ',1)';
+    g.fillRect(p.x - p.s / 2, p.y - p.s / 2, p.s, p.s);
+  });
+  g.globalAlpha = 1;
+  g.globalCompositeOperation = 'source-over';
+
+  var vg = g.createRadialGradient(W / 2, H / 2, H * 0.30, W / 2, H / 2, H * 0.88);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(0,0,0,.62)');
+  g.fillStyle = vg;
+  g.fillRect(0, 0, W, H);
+
+  g.restore();
+}
+
+/* ---------- 主循环 ---------- */
+var last = 0;
+function loop(ts) {
+  var dt = Math.min(0.05, (ts - last) / 1000);
+  if (!isFinite(dt) || dt < 0) dt = 0.016;
+  last = ts;
+  t += dt;
+
+  particles.forEach(function (p) {
+    p.x += p.vx; p.y += p.vy;
+    p.vy += 0.18;
+    p.vx *= 0.97; p.vy *= 0.97;
+    p.life -= p.dec;
+  });
+  particles = particles.filter(function (p) { return p.life > 0; });
+
+  if (shake > 0) shake = Math.max(0, shake - dt * 22);
+
+  render();
+  requestAnimationFrame(loop);
+}
+
+/* ---------- 输入：键盘 ---------- */
+addEventListener('keydown', function (ev) {
+  var k = (ev.key || '').toLowerCase();
+  if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].indexOf(k) >= 0) ev.preventDefault();
+
+  var dir = null;
+  if (k === 'arrowup' || k === 'w') dir = 'up';
+  else if (k === 'arrowdown' || k === 's') dir = 'down';
+  else if (k === 'arrowleft' || k === 'a') dir = 'left';
+  else if (k === 'arrowright' || k === 'd') dir = 'right';
+  else if (k === 'r') { reset(); return; }
+
+  if (dir) tryMove(dir);
+});
+
+/* ---------- 输入：触摸滑动 ---------- */
+var tsx = 0, tsy = 0;
+addEventListener('touchstart', function (e) {
+  tsx = e.touches[0].clientX; tsy = e.touches[0].clientY;
+}, { passive: true });
+addEventListener('touchend', function (e) {
+  var dx = e.changedTouches[0].clientX - tsx;
+  var dy = e.changedTouches[0].clientY - tsy;
+  if (Math.abs(dx) < 24 && Math.abs(dy) < 24) return;
+  var dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+  tryMove(dir);
+  e.preventDefault();
+}, { passive: false });
+addEventListener('touchmove', function (e) { e.preventDefault(); }, { passive: false });
+
+/* ---------- 输入：方向键（手机） ---------- */
+var pad = document.getElementById('pad');
+var isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+if (isTouch) {
+  pad.classList.add('on');
+  document.getElementById('tip').style.bottom = '200px';
+}
+Array.prototype.forEach.call(pad.querySelectorAll('button'), function (btn) {
+  var fire = function (ev) {
+    ev.preventDefault();
+    var d = btn.getAttribute('data-d');
+    tryMove(d);
+    if (navigator.vibrate) navigator.vibrate(8);
+  };
+  btn.addEventListener('click', fire);
+});
+document.getElementById('rst').addEventListener('click', function () { reset(); });
+
+/* ---------- 自适应缩放 ---------- */
+function fit() {
+  var maxW = innerWidth - 28;
+  var maxH = innerHeight - (isTouch ? 260 : 130);
+  var z = Math.min(maxW / W, maxH / H);
+  z = Math.max(z, 0.42);
+  cv.style.width = Math.round(W * z) + 'px';
+  cv.style.height = Math.round(H * z) + 'px';
+}
+addEventListener('resize', fit);
+addEventListener('orientationchange', fit);
+fit();
+
+/* ---------- 开场提示自动淡出 ---------- */
+setTimeout(function () { document.getElementById('goal').classList.add('gone'); }, 7000);
+
+/* ---------- 启动 ---------- */
+reset();
+requestAnimationFrame(loop);
+</script>
+
+<!-- GOBAgame publisher splash (auto-injected) -->
+<div id="__goba_splash" style="position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#0e0f13;pointer-events:none;transition:opacity .55s ease;opacity:1"><img src="../../assets/img/gobagame-white.png" alt="GOBAgame" style="width:min(46vw,300px);height:auto;opacity:.92"></div>
+<script>(function(){var e=document.getElementById('__goba_splash');if(!e)return;var t=0;function hide(){if(t)return;t=1;e.style.opacity='0';setTimeout(function(){if(e.parentNode)e.parentNode.removeChild(e);},700);}window.addEventListener('load',function(){setTimeout(hide,1600);});setTimeout(hide,5000);})();</script>
+</body>
+</html>

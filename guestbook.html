@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>留言 · Ant</title>
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  .gb-wrap{ max-width: 720px; margin: 0 auto; }
+
+  /* ---------- 发表表单 ---------- */
+  .gb-form{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  .gb-row{ display: flex; gap: 12px; flex-wrap: wrap; }
+  .gb-field{ display: flex; flex-direction: column; gap: 6px; }
+  .gb-field--name{ flex: 0 0 160px; }
+  .gb-field--body{ flex: 1 1 100%; }
+  .gb-label{
+    font-size: var(--fs-xs);
+    color: var(--ink-3);
+    letter-spacing: .04em;
+  }
+  .gb-input, .gb-textarea{
+    font-family: var(--font);
+    font-size: var(--fs-sm);
+    color: var(--ink);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color .15s;
+    width: 100%;
+  }
+  .gb-input:focus, .gb-textarea:focus{ border-color: var(--accent); }
+  .gb-textarea{ resize: vertical; min-height: 84px; line-height: 1.7; }
+
+  .gb-actions{
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-top: 14px; flex-wrap: wrap;
+  }
+  .gb-hint{ font-size: var(--fs-xs); color: var(--ink-3); }
+  .gb-btn{
+    font-family: var(--font);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    color: #fff;
+    background: var(--accent);
+    border: 0;
+    border-radius: var(--radius-pill);
+    padding: 9px 26px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .gb-btn:hover{ background: var(--accent-hover); }
+  .gb-btn:disabled{ opacity: .5; cursor: not-allowed; }
+
+  /* ---------- 状态条 ---------- */
+  .gb-status{
+    margin: 16px 0 0;
+    font-size: var(--fs-xs);
+    color: var(--ink-3);
+    text-align: center;
+    min-height: 18px;
+  }
+  .gb-status--warn{ color: #b4552d; }
+
+  /* ---------- 留言列表 ---------- */
+  .gb-list{ margin-top: 26px; display: flex; flex-direction: column; gap: 14px; }
+  .gb-item{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 15px 18px;
+    box-shadow: var(--shadow-sm);
+  }
+  .gb-item__head{
+    display: flex; align-items: baseline; gap: 10px;
+    margin-bottom: 6px; flex-wrap: wrap;
+  }
+  .gb-item__name{
+    font-weight: 600; font-size: var(--fs-sm); color: var(--ink);
+  }
+  .gb-item__time{
+    font-size: var(--fs-xs); color: var(--ink-3);
+  }
+  .gb-item__del{
+    margin-left: auto;
+    font-size: var(--fs-xs);
+    color: var(--ink-3);
+    background: none; border: 0; cursor: pointer;
+    font-family: var(--font);
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: color .15s, background .15s;
+  }
+  .gb-item__del:hover{ color: #c0392b; background: #fdf0ee; }
+  .gb-item__body{
+    font-size: var(--fs-sm);
+    color: var(--ink-2);
+    line-height: var(--lh-base);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .gb-empty{
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--ink-3);
+    font-size: var(--fs-sm);
+    border: 1px dashed var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+</style>
+</head>
+<body>
+
+<main class="wrap" style="padding-top:34px;padding-bottom:56px;">
+
+  <div class="sec-title" style="margin-bottom:24px;">
+    <h2 style="font-size:24px;margin-bottom:6px;">留言</h2>
+    <p style="font-size:var(--fs-sm);color:var(--ink-3);">
+      不用注册，填个名字直接说。
+    </p>
+  </div>
+
+  <div class="gb-wrap">
+
+    <!-- 发表框 -->
+    <form class="gb-form" id="gbForm" autocomplete="off">
+      <div class="gb-row">
+        <div class="gb-field gb-field--name">
+          <label class="gb-label" for="gbName">昵称</label>
+          <input class="gb-input" id="gbName" maxlength="24" placeholder="你的名字">
+        </div>
+      </div>
+      <div class="gb-row" style="margin-top:12px;">
+        <div class="gb-field gb-field--body">
+          <label class="gb-label" for="gbBody">留言</label>
+          <textarea class="gb-textarea" id="gbBody" maxlength="500"
+                    placeholder="想说什么…"></textarea>
+        </div>
+      </div>
+      <div class="gb-actions">
+        <span class="gb-hint" id="gbCount">0 / 500</span>
+        <button class="gb-btn" type="submit" id="gbSend">发布</button>
+      </div>
+    </form>
+
+    <div class="gb-status" id="gbStatus">正在加载…</div>
+
+    <!-- 列表 -->
+    <div class="gb-list" id="gbList"></div>
+
+  </div>
+
+</main>
+
+<script>
+/* ============================================================
+   留言板  —  本地优先 + 云端同步
+   ------------------------------------------------------------
+   存储策略：
+   1. localStorage  : 永远可写，保证你自己看到自己发的
+   2. 云端 JSONBin  : 可选，配了 key 之后所有人可见
+   没配云端时，退化为「单机留言板」——
+   别人打开看不到你的留言，这点必须让用户知道。
+   ============================================================ */
+
+/* 想开启多人可见：去 jsonbin.io 免费注册，建一个 Bin，
+   把 ID 填到下面 CLOUD.binId，把 Master Key 填到 apiKey（或用 X-Master-Key）*/
+var CLOUD = {
+  binId  : '',          // 例如 '65f1a2b3...'
+  apiKey : '',          // X-Master-Key
+  get enabled(){ return !!(this.binId && this.apiKey); }
+};
+
+var LS_KEY = 'ant_gb_v1';
+
+var elName   = document.getElementById('gbName');
+var elBody   = document.getElementById('gbBody');
+var elCount  = document.getElementById('gbCount');
+var elSend   = document.getElementById('gbSend');
+var elStatus = document.getElementById('gbStatus');
+var elList   = document.getElementById('gbList');
+var elForm   = document.getElementById('gbForm');
+
+/* ---------- 本地存储 ---------- */
+function localLoad(){
+  try{
+    var raw = localStorage.getItem(LS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+function localSave(list){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(list)); }catch(e){}
+}
+
+/* ---------- 工具 ---------- */
+function esc(s){
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function ago(ts){
+  var d = Date.now() - ts;
+  if(d < 60000) return '刚刚';
+  if(d < 3600000) return Math.floor(d/60000) + ' 分钟前';
+  if(d < 86400000) return Math.floor(d/3600000) + ' 小时前';
+  if(d < 604800000) return Math.floor(d/86400000) + ' 天前';
+  var dt = new Date(ts);
+  return dt.getFullYear() + '-' +
+         String(dt.getMonth()+1).padStart(2,'0') + '-' +
+         String(dt.getDate()).padStart(2,'0');
+}
+function setStatus(text, warn){
+  elStatus.textContent = text;
+  elStatus.className = 'gb-status' + (warn ? ' gb-status--warn' : '');
+}
+
+/* ---------- 渲染 ---------- */
+var current = [];
+
+function render(){
+  if(!current.length){
+    elList.innerHTML = '<div class="gb-empty">还没有人留言，你可以是第一句。</div>';
+    return;
+  }
+  elList.innerHTML = current.map(function(item){
+    return '' +
+      '<div class="gb-item">' +
+        '<div class="gb-item__head">' +
+          '<span class="gb-item__name">' + esc(item.name) + '</span>' +
+          '<span class="gb-item__time">' + ago(item.ts) + '</span>' +
+          '<button class="gb-item__del" data-id="' + item.id + '">删除</button>' +
+        '</div>' +
+        '<div class="gb-item__body">' + esc(item.body) + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+/* 只允许删自己发的（存在本机的 id） */
+var MINE_KEY = 'ant_gb_mine_v1';
+function myIds(){
+  try{ return JSON.parse(localStorage.getItem(MINE_KEY) || '[]'); }catch(e){ return []; }
+}
+function markMine(id){
+  var a = myIds(); a.push(id);
+  try{ localStorage.setItem(MINE_KEY, JSON.stringify(a)); }catch(e){}
+}
+
+elList.addEventListener('click', function(e){
+  var btn = e.target.closest('.gb-item__del');
+  if(!btn) return;
+  var id = btn.getAttribute('data-id');
+  if(myIds().indexOf(id) < 0){
+    alert('只能删除自己发的留言。');
+    return;
+  }
+  if(!confirm('删除这条留言？')) return;
+  current = current.filter(function(it){ return it.id !== id; });
+  localSave(current);
+  render();
+  pushCloud();
+});
+
+/* ---------- 云端（可选） ---------- */
+function cloudUrl(){
+  return 'https://api.jsonbin.io/v3/b/' + CLOUD.binId;
+}
+
+function cloudLoad(){
+  if(!CLOUD.enabled) return Promise.resolve(null);
+  return fetch(cloudUrl() + '/latest', {
+    headers: { 'X-Master-Key': CLOUD.apiKey }
+  })
+  .then(function(r){ return r.ok ? r.json() : null; })
+  .then(function(j){
+    if(j && j.record && Array.isArray(j.record.items)) return j.record.items;
+    return null;
+  })
+  .catch(function(){ return null; });
+}
+
+function pushCloud(){
+  if(!CLOUD.enabled) return;
+  fetch(cloudUrl(), {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': CLOUD.apiKey
+    },
+    body: JSON.stringify({ items: current })
+  }).catch(function(){});
+}
+
+/* ---------- 合并去重 ---------- */
+function merge(a, b){
+  var map = {};
+  (a || []).concat(b || []).forEach(function(it){
+    if(it && it.id) map[it.id] = it;
+  });
+  return Object.keys(map).map(function(k){ return map[k]; })
+    .sort(function(x, y){ return y.ts - x.ts; });
+}
+
+/* ---------- 发布 ---------- */
+elForm.addEventListener('submit', function(e){
+  e.preventDefault();
+
+  var name = (elName.value || '').trim() || '路人';
+  var body = (elBody.value || '').trim();
+
+  if(!body){
+    setStatus('留言内容不能为空。', true);
+    elBody.focus();
+    return;
+  }
+  if(body.length > 500){
+    setStatus('留言最多 500 字。', true);
+    return;
+  }
+
+  var item = {
+    id   : 'm' + Date.now() + Math.random().toString(36).slice(2, 7),
+    name : name.slice(0, 24),
+    body : body.slice(0, 500),
+    ts   : Date.now()
+  };
+
+  markMine(item.id);
+  current = merge(current, [item]);
+  localSave(current);
+  pushCloud();
+  render();
+
+  elBody.value = '';
+  elCount.textContent = '0 / 500';
+  setStatus(navigator.onLine
+    ? '已发布。' + (CLOUD.enabled ? '' : '（当前为单机模式，仅本机可见）')
+    : '已存到本机，联网后会自动同步。', !CLOUD.enabled);
+
+  /* 记住昵称 */
+  try{ localStorage.setItem('ant_gb_name', name); }catch(e){}
+});
+
+/* ---------- 字数统计 ---------- */
+elBody.addEventListener('input', function(){
+  elCount.textContent = elBody.value.length + ' / 500';
+});
+
+/* ---------- 初始化 ---------- */
+(function init(){
+  try{
+    var n = localStorage.getItem('ant_gb_name');
+    if(n) elName.value = n;
+  }catch(e){}
+
+  var local = localLoad();
+  current = merge(current, local);
+  render();
+  setStatus('正在加载…');
+
+  cloudLoad().then(function(remote){
+    if(remote){
+      current = merge(current, remote);
+      localSave(current);
+      render();
+      setStatus('共 ' + current.length + ' 条留言。');
+    } else {
+      setStatus(
+        CLOUD.enabled
+          ? '共 ' + current.length + ' 条留言。'
+          : '单机模式：留言只存在这台设备上，别人看不到。',
+        !CLOUD.enabled
+      );
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

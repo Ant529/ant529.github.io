@@ -130,9 +130,10 @@ body {
    用 DecompressionStream 解开，回一个 application/wasm 的 Response，
    后面的 instantiateStreaming 完全感知不到差别。
 
-   v2（实测后改）：github.io 的带宽极不稳定（同一文件 49KB/s ~ 9.4MB/s 都出现过），
-   所以先走 jsDelivr 的镜像（同一仓库，实测 2.6MB/s），9 秒拿不到就 abort，
-   或者解压后字节数对不上（版本/截断）就退回本站那份 —— 两头都保底。 */
+   v3：github.io 带宽极不稳定（同一文件 49KB/s ~ 9.4MB/s 都出现过），先试 jsDelivr 镜像。
+       ★ 关键：超时预算必须框住「响应头 + 读完整条 body + 解压」整段 ——
+         v2 只框了拿到响应头那一下，body 慢的时候会一直挂着，兜底永远不触发（线上实测卡死 180s）。
+       现在 cdn 22 秒、本站 300 秒，任一段超时或字节数不对就换下一个源。 */
 (function () {
   if (typeof DecompressionStream === 'undefined') return;   /* 太老的浏览器：保持原样 */
   var raw = window.fetch.bind(window);
@@ -141,21 +142,25 @@ body {
   var WANT = 37902138;          /* 解压后的确切字节数，挡掉不完整/版本不对的文件 */
   var job = null;
 
-  function pull(url, ms) {
+  /* 取 .gz → 解压 → 校验字节数；整段受 budget 约束，超时直接 abort */
+  function fetchGz(url, budget) {
     var ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timer = null;
     var p = raw(url, ctl ? { cache: 'force-cache', signal: ctl.signal } : { cache: 'force-cache' })
       .then(function (r) {
         if (!r.ok) throw new Error(url + ' HTTP ' + r.status);
-        return r;
+        return new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+      })
+      .then(function (b) {
+        if (b.byteLength !== WANT) throw new Error('bytes ' + b.byteLength);
+        return b;
       });
     if (!ctl) return p;
-    return Promise.race([p, new Promise(function (_, rej) {
-      setTimeout(function () { try { ctl.abort(); } catch (e) {} rej(new Error('timeout')); }, ms);
-    })]);
-  }
-
-  function inflate(res) {
-    return new Response(res.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+    timer = setTimeout(function () { try { ctl.abort(); } catch (e) {} }, budget);
+    return p.then(
+      function (b) { clearTimeout(timer); return b; },
+      function (e) { clearTimeout(timer); throw e; }
+    );
   }
 
   function hideHint() {
@@ -164,15 +169,9 @@ body {
   }
 
   function load() {
-    return pull(GZ_CDN, 9000)
-      .then(inflate)
-      .then(function (b) {
-        if (b.byteLength !== WANT) throw new Error('cdn bytes ' + b.byteLength);
-        return b;
-      })
-      .catch(function () {
-        return pull(GZ_LOCAL, 300000).then(inflate);
-      });
+    return fetchGz(GZ_CDN, 22000).catch(function () {
+      return fetchGz(GZ_LOCAL, 300000);
+    });
   }
 
   window.fetch = function (input, init) {

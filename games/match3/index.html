@@ -109,39 +109,84 @@ body {
 			<div id="status-notice"></div>
 		</div>
 
+		<div id="__gj_hint">正在加载引擎（约 36MB，首次较慢，请稍等）</div>
+		<style>
+			#__gj_hint{
+				position: fixed; left: 0; right: 0; bottom: 12px; z-index: 9999;
+				text-align: center; pointer-events: none;
+				font: 13px/1.6 system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+				color: #9aa4b2; text-shadow: 0 1px 3px rgba(0,0,0,.85);
+				transition: opacity .4s ease;
+			}
+		</style>
+
 		<script>
 /* wasm 以 gzip 随包分发（36.15MB -> 9.56MB）：
    GitHub 网页上传单文件上限 25MB，原始 wasm 拖不上去；
-   另外三个 Godot 游戏的 wasm 是同一个文件，这里统一指向 ../wasm/index.wasm.gz（放在 games/wasm/，不用下划线开头，避开 Jekyll）。
+   三个 Godot 游戏的 wasm 是同一个文件，统一指向 ../wasm/index.wasm.gz
+   （放在 games/wasm/，不用下划线开头，避开 Jekyll 的忽略规则）。
+
    做法：在 index.js 之前接管 window.fetch —— 引擎请求 *.wasm 时取那个 .gz，
    用 DecompressionStream 解开，回一个 application/wasm 的 Response，
-   后面的 instantiateStreaming 完全感知不到差别。 */
+   后面的 instantiateStreaming 完全感知不到差别。
+
+   v2（实测后改）：github.io 的带宽极不稳定（同一文件 49KB/s ~ 9.4MB/s 都出现过），
+   所以先走 jsDelivr 的镜像（同一仓库，实测 2.6MB/s），9 秒拿不到就 abort，
+   或者解压后字节数对不上（版本/截断）就退回本站那份 —— 两头都保底。 */
 (function () {
   if (typeof DecompressionStream === 'undefined') return;   /* 太老的浏览器：保持原样 */
   var raw = window.fetch.bind(window);
-  var GZ = '../wasm/index.wasm.gz';
+  var GZ_LOCAL = '../wasm/index.wasm.gz';
+  var GZ_CDN = 'https://cdn.jsdelivr.net/gh/Ant529/ant529.github.io@main/games/wasm/index.wasm.gz';
+  var WANT = 37902138;          /* 解压后的确切字节数，挡掉不完整/版本不对的文件 */
   var job = null;
-  function bytes() {
-    if (!job) {
-      job = raw(GZ, { cache: 'force-cache' }).then(function (r) {
-        if (!r.ok) throw new Error(GZ + ' HTTP ' + r.status);
-        return new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+
+  function pull(url, ms) {
+    var ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var p = raw(url, ctl ? { cache: 'force-cache', signal: ctl.signal } : { cache: 'force-cache' })
+      .then(function (r) {
+        if (!r.ok) throw new Error(url + ' HTTP ' + r.status);
+        return r;
       });
-    }
-    return job;
+    if (!ctl) return p;
+    return Promise.race([p, new Promise(function (_, rej) {
+      setTimeout(function () { try { ctl.abort(); } catch (e) {} rej(new Error('timeout')); }, ms);
+    })]);
   }
+
+  function inflate(res) {
+    return new Response(res.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+  }
+
+  function hideHint() {
+    var h = document.getElementById('__gj_hint');
+    if (h) { h.style.opacity = '0'; setTimeout(function () { h.remove(); }, 450); }
+  }
+
+  function load() {
+    return pull(GZ_CDN, 9000)
+      .then(inflate)
+      .then(function (b) {
+        if (b.byteLength !== WANT) throw new Error('cdn bytes ' + b.byteLength);
+        return b;
+      })
+      .catch(function () {
+        return pull(GZ_LOCAL, 300000).then(inflate);
+      });
+  }
+
   window.fetch = function (input, init) {
     var u = (typeof input === 'string') ? input : ((input && input.url) || '');
     var q = u.split('?')[0].split('#')[0];
-    if (q.slice(-5) === '.wasm') {
-      return bytes().then(function (buf) {
-        return new Response(buf, {
-          status: 200,
-          headers: { 'Content-Type': 'application/wasm', 'Content-Length': String(buf.byteLength) }
-        });
+    if (q.slice(-5) !== '.wasm') return raw(input, init);
+    if (!job) job = load();
+    return job.then(function (buf) {
+      hideHint();
+      return new Response(buf, {
+        status: 200,
+        headers: { 'Content-Type': 'application/wasm', 'Content-Length': String(buf.byteLength) }
       });
-    }
-    return raw(input, init);
+    });
   };
 })();
 </script>

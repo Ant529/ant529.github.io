@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GOBA Office · 下载</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --ink:#0b0b0f; --ink2:#5f6069; --line:rgba(0,0,0,.08);
+    --blue:#0a84ff; --blue2:#0066d6; --card:#fff;
+  }
+  body{
+    font-family:-apple-system,"SF Pro SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    color:var(--ink); -webkit-font-smoothing:antialiased;
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #eaf2ff 0%, transparent 60%),
+      radial-gradient(1000px 500px at 88% 8%, #fff2ea 0%, transparent 55%),
+      #f6f6f8;
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    padding:48px 20px 64px;
+  }
+  .wrap{width:100%;max-width:760px}
+  .head{display:flex;align-items:center;gap:16px;margin-bottom:34px}
+  .mark{
+    width:62px;height:62px;border-radius:16px;flex:none;
+    background:linear-gradient(160deg,#ff5a4e,#e0281c 65%,#c01a12);
+    display:grid;place-items:center;
+    box-shadow:0 8px 22px rgba(224,40,28,.28), inset 0 1px 0 rgba(255,255,255,.35);
+    color:#fff;font-weight:800;font-size:33px;letter-spacing:-1px;
+  }
+  .titles h1{font-size:26px;letter-spacing:-.3px;font-weight:700;line-height:1.2}
+  .titles p{color:var(--ink2);font-size:13.5px;margin-top:5px}
+  .badge{display:inline-block;font-size:11.5px;font-weight:600;letter-spacing:.2px;
+    padding:2px 8px;border-radius:999px;background:rgba(10,132,255,.1);color:var(--blue2);
+    vertical-align:2px;margin-left:8px}
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:20px;
+    box-shadow:0 20px 44px -28px rgba(16,20,40,.35), 0 2px 6px rgba(16,20,40,.04);
+    padding:26px;
+  }
+  .dl{
+    display:flex;align-items:center;justify-content:space-between;gap:18px;
+    padding:18px 20px;border-radius:14px;
+    background:linear-gradient(180deg,#fbfbff,#f3f5fb);border:1px solid var(--line);
+  }
+  .dl-info b{font-size:15.5px;font-weight:650}
+  .dl-info span{display:block;color:var(--ink2);font-size:12.5px;margin-top:4px}
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;
+    background:linear-gradient(180deg,#2b95ff,var(--blue) 45%,var(--blue2));
+    color:#fff;text-decoration:none;font-weight:650;font-size:14.5px;
+    padding:12px 22px;border-radius:11px;white-space:nowrap;
+    box-shadow:0 6px 16px rgba(10,132,255,.32), inset 0 1px 0 rgba(255,255,255,.28);
+    transition:transform .12s ease, box-shadow .12s ease;cursor:pointer;border:none;font-family:inherit;
+  }
+  .btn:hover{transform:translateY(-1px)}
+  .btn:active{transform:scale(.985)}
+  .btn svg{width:15px;height:15px}
+  .steps{margin-top:22px;display:grid;gap:11px}
+  .step{display:flex;gap:12px;align-items:flex-start;font-size:13.5px;line-height:1.55;color:#25262c}
+  .num{flex:none;width:20px;height:20px;border-radius:6px;background:#eef1f7;color:#5a6070;
+    font-size:11.5px;font-weight:700;display:grid;place-items:center;margin-top:1px}
+  .step small{color:var(--ink2)}
+  .split{margin-top:26px;border-top:1px solid var(--line);padding-top:22px}
+  .sec-t{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:12px}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  .f{border:1px solid var(--line);border-radius:13px;padding:14px;background:#fcfcfe}
+  .f b{font-size:13px;font-weight:650;display:flex;align-items:center;gap:6px}
+  .f p{font-size:12.5px;color:var(--ink2);margin-top:6px;line-height:1.6}
+  .f .go{margin-top:10px;display:inline-flex;align-items:center;gap:5px;background:rgba(10,132,255,.1);
+    color:var(--blue2);border-radius:8px;padding:7px 13px;font-size:12.5px;font-weight:600;text-decoration:none;cursor:pointer;border:none;font-family:inherit}
+  .foot{margin-top:20px;font-size:12px;color:#8a8b95;line-height:1.7}
+  .foot code{background:#eef0f5;padding:1px 5px;border-radius:4px;font-size:11.5px;color:#454a56}
+  @media (max-width:560px){
+    .dl{flex-direction:column;align-items:stretch}
+    .btn{justify-content:center}
+    .grid{grid-template-columns:1fr}
+    .head{gap:13px}
+    .mark{width:52px;height:52px;font-size:27px;border-radius:14px}
+    .titles h1{font-size:22px}
+    body{padding:32px 16px 48px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div class="mark">G</div>
+    <div class="titles">
+      <h1>GOBA Office<span class="badge">v17</span></h1>
+      <p>文档 · 表格 · AI · 输入法，一个壳里全都有</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="dl">
+      <div class="dl-info">
+        <b>GOBA Office.exe <small style="color:var(--ink2);font-weight:500">软件本体，不是压缩包</small></b>
+        <span>Windows 10 / 11 · 64 位 · 下完双击就能跑</span>
+      </div>
+      <a class="btn" href="GOBA Office.exe" download>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/></svg>
+        下载电脑版
+      </a>
+    </div>
+
+    <div class="steps">
+      <div class="step"><div class="num">1</div><div>点上面按钮，直接下软件本体</div></div>
+      <div class="step"><div class="num">2</div><div>放到一个固定文件夹<small>，比如 <code>D:\GOBA Office\</code>，别放桌面乱堆</small></div></div>
+      <div class="step"><div class="num">3</div><div>右键 exe → 发送到 → 桌面快捷方式<small>，第一次开慢几秒，别急着关</small></div></div>
+    </div>
+
+    <div class="split">
+      <div class="sec-t">手机版 · 免安装，装成 App 样子</div>
+      <div class="grid">
+        <div class="f">
+          <b>🤖 安卓</b>
+          <p>手机浏览器打开手机版 → 菜单「安装应用」。桌面出红 G 图标，独立窗口打开，离线能用。</p>
+          <a class="go" href="m/" >打开手机版 →</a>
+        </div>
+        <div class="f">
+          <b>🍎 iPhone / iPad</b>
+          <p>Safari 打开手机版 → 分享 → 「添加到主屏幕」。全屏运行，跟 App 一个样。</p>
+          <a class="go" href="m/">打开手机版 →</a>
+        </div>
+        <div class="f">
+          <b>💬 传文件给微信</b>
+          <p>手机版里点「导出」→ 分享面板选微信 → 发好友或文件传输助手。电脑版做的文件，手机接着改。</p>
+          <a class="go" href="m/">去手机版 →</a>
+        </div>
+        <div class="f">
+          <b>🔄 文件互通</b>
+          <p>电脑版、手机版共用 .gdoc / .gsheet 家格式。微信里收到文件，存下来在「我的 → 导入」打开。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">
+      电脑版打不开或白屏：先把 Edge 更新一遍（WebView2 跟着走）。<br>
+      exe 别孤零零扔桌面，给它一个自己的文件夹。
+    </div>
+  </div>
+</div>
+</body>
+</html>

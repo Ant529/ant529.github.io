@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>GOBA Office</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="GOBA">
+<meta name="theme-color" content="#e0281c">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  :root{
+    --ink:#0b0b0f;--ink2:#6c6d75;--line:rgba(0,0,0,.08);--red:#e0281c;--blue:#0a84ff;
+    --bg:#f4f4f7;--card:#fff;--tabh:56px;--sa-t:env(safe-area-inset-top);--sa-b:env(safe-area-inset-bottom);
+  }
+  html,body{height:100%;overscroll-behavior:none}
+  body{
+    font-family:-apple-system,"SF Pro SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;
+    display:flex;justify-content:center;
+  }
+  /* 画幅：宽屏下按 16:11 成舞台居中，手机上铺满 */
+  .stage{width:100%;max-width:100%;height:100dvh;display:flex;flex-direction:column;position:relative;background:var(--bg)}
+  @media (min-width:760px) and (min-aspect-ratio:1/1){
+    .stage{max-height:100dvh;height:100dvh;aspect-ratio:16/11;width:auto;border-radius:24px;overflow:hidden;
+      box-shadow:0 30px 80px -30px rgba(0,0,0,.5);margin:auto;border:1px solid var(--line)}
+    body{background:#e9eaef}
+  }
+  /* 顶栏 */
+  .top{
+    padding:calc(var(--sa-t) + 10px) 16px 10px;flex:none;
+    display:flex;align-items:center;gap:10px;background:rgba(244,244,247,.86);
+    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+    border-bottom:1px solid var(--line);position:relative;z-index:5;
+  }
+  .logo{width:30px;height:30px;border-radius:8px;flex:none;
+    background:linear-gradient(160deg,#ff5a4e,#c01a12);color:#fff;font-weight:800;font-size:16px;
+    display:grid;place-items:center;box-shadow:0 2px 6px rgba(224,40,28,.3)}
+  .top b{font-size:16.5px;font-weight:700;letter-spacing:-.2px}
+  .top .act{margin-left:auto;display:flex;gap:6px}
+  .tbtn{
+    border:none;background:rgba(0,0,0,.05);color:var(--ink);border-radius:9px;
+    height:32px;padding:0 12px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;
+  }
+  .tbtn:active{transform:scale(.94)}
+  .tbtn.red{background:rgba(224,40,28,.1);color:var(--red)}
+  /* 页面 */
+  main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 16px calc(var(--tabh) + var(--sa-b) + 18px)}
+  .view{display:none}.view.on{display:block}
+  /* 列表卡 */
+  .item{
+    display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;padding:13px 14px;margin-bottom:10px;cursor:pointer;
+    box-shadow:0 1px 3px rgba(16,20,40,.04);
+  }
+  .item:active{background:#f7f7fa}
+  .item .ic{width:38px;height:38px;border-radius:10px;flex:none;display:grid;place-items:center;font-size:17px}
+  .ic.doc{background:rgba(10,132,255,.1)}.ic.sheet{background:rgba(52,199,89,.12)}.ic.note{background:rgba(255,149,0,.12)}
+  .item .tt{flex:1;min-width:0}
+  .item .tt b{display:block;font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item .tt small{color:var(--ink2);font-size:11.5px}
+  .item .del{border:none;background:none;color:#c1c2c9;font-size:17px;padding:6px;cursor:pointer;font-family:inherit}
+  .empty{text-align:center;color:var(--ink2);font-size:13px;padding:44px 0}
+  .fab{
+    position:fixed;right:18px;bottom:calc(var(--tabh) + var(--sa-b) + 16px);
+    width:52px;height:52px;border-radius:17px;border:none;cursor:pointer;
+    background:linear-gradient(180deg,#2b95ff,var(--blue) 45%,#0066d6);color:#fff;font-size:24px;font-weight:600;
+    box-shadow:0 8px 20px rgba(10,132,255,.4);z-index:8;
+  }
+  .fab:active{transform:scale(.92)}
+  /* 底栏 */
+  .tabs{
+    position:fixed;left:0;right:0;bottom:0;z-index:9;height:calc(var(--tabh) + var(--sa-b));
+    padding-bottom:var(--sa-b);display:flex;background:rgba(250,250,252,.9);
+    backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--line);
+  }
+  .tab{flex:1;border:none;background:none;font-family:inherit;font-size:10.5px;color:#8e8f98;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer}
+  .tab .ti{font-size:20px;line-height:1.1}
+  .tab.on{color:var(--blue)}
+  /* 编辑器 */
+  .editor{display:none;position:fixed;inset:0;background:var(--bg);z-index:20;flex-direction:column}
+  .editor.on{display:flex}
+  .e-top{padding:calc(var(--sa-t) + 8px) 12px 8px;display:flex;align-items:center;gap:8px;flex:none;
+    border-bottom:1px solid var(--line);background:rgba(244,244,247,.9)}
+  .e-top .bk{border:none;background:none;font-size:15px;color:var(--blue);font-weight:600;font-family:inherit;padding:6px 8px;cursor:pointer}
+  .e-top input{flex:1;border:none;background:none;font-family:inherit;font-size:16px;font-weight:650;color:var(--ink);outline:none;min-width:0}
+  .e-tools{display:flex;gap:4px;padding:6px 10px;overflow-x:auto;flex:none;border-bottom:1px solid var(--line);background:#fff}
+  .e-tools button{border:none;background:none;font-family:inherit;font-size:13.5px;padding:5px 10px;border-radius:8px;color:var(--ink);cursor:pointer;white-space:nowrap}
+  .e-tools button:active{background:rgba(0,0,0,.06)}
+  .e-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 18px 60px;background:#fff;outline:none;
+    font-size:15.5px;line-height:1.7}
+  .e-body h1{font-size:21px;margin:10px 0 8px}.e-body h2{font-size:17.5px;margin:8px 0 6px}
+  .e-body ul{padding-left:22px}
+  /* 表格 */
+  .sheetbox{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:auto;max-height:calc(100dvh - var(--tabh) - var(--sa-b) - 120px)}
+  table.sheet{border-collapse:collapse;width:max-content;min-width:100%}
+  .sheet th{background:#f1f1f5;font-size:10.5px;color:var(--ink2);padding:5px 8px;border:1px solid var(--line);position:sticky;top:0}
+  .sheet td{border:1px solid var(--line);min-width:76px;height:34px;padding:4px 8px;font-size:13px;cursor:pointer;white-space:nowrap;max-width:200px;overflow:hidden}
+  .sheet td.cur{outline:2px solid var(--blue);outline-offset:-2px}
+  .cellbar{display:flex;gap:8px;padding:10px 2px}
+  .cellbar input{flex:1;border:1px solid var(--line);border-radius:11px;height:42px;padding:0 14px;font-size:15px;font-family:inherit;outline:none;background:#fff;min-width:0}
+  .cellbar button{border:none;background:var(--blue);color:#fff;border-radius:11px;padding:0 18px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer}
+  /* 速记 */
+  .qadd{display:flex;gap:8px;margin-bottom:12px}
+  .qadd input{flex:1;border:1px solid var(--line);border-radius:13px;height:44px;padding:0 14px;font-size:14.5px;font-family:inherit;outline:none;background:#fff;min-width:0}
+  .qadd button{border:none;background:var(--red);color:#fff;border-radius:13px;padding:0 16px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer}
+  /* 我的 */
+  .set{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:10px;overflow:hidden}
+  .set .row{display:flex;align-items:center;gap:10px;padding:13px 14px;border-bottom:1px solid var(--line);font-size:14px;cursor:pointer}
+  .set .row:last-child{border-bottom:none}
+  .set .row:active{background:#f7f7fa}
+  .set .row small{margin-left:auto;color:var(--ink2);font-size:12px}
+  .sec{font-size:12px;color:var(--ink2);margin:14px 2px 8px;font-weight:600;letter-spacing:.3px}
+  /* 弹层 */
+  .mask{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:30;display:none;align-items:flex-end;justify-content:center}
+  .mask.on{display:flex}
+  .sheet-m{
+    width:100%;max-width:560px;background:var(--card);border-radius:20px 20px 0 0;
+    padding:14px 16px calc(var(--sa-b) + 14px);
+  }
+  .sheet-m h3{font-size:15px;font-weight:700;margin-bottom:12px}
+  .sheet-m .row{display:flex;align-items:center;gap:10px;padding:13px 4px;font-size:14.5px;border-bottom:1px solid var(--line);cursor:pointer}
+  .sheet-m .row:last-child{border-bottom:none}
+  .toast{
+    position:fixed;left:50%;bottom:calc(var(--tabh) + var(--sa-b) + 24px);transform:translateX(-50%) translateY(8px);
+    background:rgba(20,20,24,.92);color:#fff;font-size:13px;padding:9px 16px;border-radius:12px;
+    opacity:0;pointer-events:none;transition:all .22s;z-index:50;max-width:82%;text-align:center;
+  }
+  .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+  /* 调色 */
+  .cl-cv{flex:1;display:grid;place-items:center;background:#101014;min-height:0;position:relative;overflow:hidden}
+  .cl-cv canvas{max-width:100%;max-height:100%;object-fit:contain;display:none}
+  .cl-cv .empty{position:absolute;color:#8e8f98;font-size:13.5px;cursor:pointer}
+  .srow{display:flex;align-items:center;gap:10px;padding:2px 14px;font-size:12.5px;color:var(--ink2)}
+  .srow label{width:42px;flex:none}
+  .srow input[type=range]{flex:1;accent-color:var(--blue);height:30px}
+  .srow b{width:38px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink);font-weight:600}
+  .presets{display:flex;gap:6px;padding:8px 14px;overflow-x:auto;flex:none;background:#fff;border-top:1px solid var(--line)}
+  .presets button{flex:none;border:1px solid var(--line);background:#fff;border-radius:10px;padding:6px 13px;font-size:12.5px;font-family:inherit;cursor:pointer;color:var(--ink)}
+  .presets button.on{border-color:var(--blue);color:var(--blue);font-weight:700;background:rgba(10,132,255,.06)}
+  /* 3D */
+  .m3d-cv{flex:1;position:relative;background:#1c1e26;min-height:0;touch-action:none;overflow:hidden}
+  .m3d-cv canvas{position:absolute;inset:0;width:100% !important;height:100% !important}
+  .m3d-tip{position:absolute;left:12px;bottom:12px;color:#9aa0b4;font-size:11px;pointer-events:none;z-index:2}
+  .m3d-cv input[type=color]{width:26px;height:26px;border:none;background:none;padding:0;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="top">
+    <div class="logo">G</div><b id="top-title">GOBA Office</b>
+    <div class="act" id="top-act"></div>
+  </div>
+
+  <main id="main">
+    <!-- 文档 -->
+    <section class="view on" id="v-docs">
+      <div id="docs-list"></div>
+      <button class="fab" onclick="App.newDoc()">＋</button>
+    </section>
+    <!-- 表格 -->
+    <section class="view" id="v-sheets">
+      <div id="sheets-list"></div>
+      <button class="fab" onclick="App.newSheet()">＋</button>
+    </section>
+    <!-- 速记 -->
+    <section class="view" id="v-notes">
+      <div class="qadd"><input id="note-in" placeholder="想到什么，记下来" onkeydown="if(event.key==='Enter')App.addNote()"><button onclick="App.addNote()">记</button></div>
+      <div id="notes-list"></div>
+    </section>
+    <!-- 调色入口页 -->
+    <section class="view" id="v-tone">
+      <div class="set">
+        <div class="row" onclick="App.openTone()"><span style="font-size:20px">🎨</span><div class="tt" style="flex:1"><b>开始调色</b><small>照片滤镜 · 预设 · 导出 PNG / 发微信</small></div><small>›</small></div>
+      </div>
+      <div class="empty">亮度 / 对比 / 饱和 / 色温 / 暗角 / 模糊<br>六组滑杆 + 六个一键预设</div>
+    </section>
+    <!-- 3D 入口页 -->
+    <section class="view" id="v-3d">
+      <div class="set">
+        <div class="row" onclick="App.open3D()"><span style="font-size:20px">🧊</span><div class="tt" style="flex:1"><b>进入 3D 工坊</b><small>方块 / 球 / 圆柱 / 圆环 · 触摸环轨 · 导出 OBJ</small></div><small>›</small></div>
+      </div>
+      <div class="empty">捏出来的模型可以导出 OBJ<br>发给电脑版接着做</div>
+    </section>
+    <!-- 我的 -->
+    <section class="view" id="v-me">
+      <div class="sec">传文件</div>
+      <div class="set">
+        <div class="row" onclick="App.shareHint()"><span>💬</span>传文件给微信<small>分享面板里选微信</small></div>
+      </div>
+      <div class="sec">文件</div>
+      <div class="set">
+        <div class="row" onclick="document.getElementById('imp-file').click()"><span>📥</span>导入 .gdoc / .gsheet<small>电脑上做的接着改</small></div>
+        <div class="row" onclick="App.backup()"><span>📤</span>导出全部备份<small>.json</small></div>
+        <input type="file" id="imp-file" accept=".gdoc,.gsheet,.json" style="display:none" onchange="App.importFile(this)">
+        <div class="row" onclick="App.wipe()"><span>🗑</span>清空全部数据<small style="color:var(--red)">不可恢复</small></div>
+      </div>
+      <div class="sec">装到手机</div>
+      <div class="set">
+        <div class="row" onclick="App.installHint('a')"><span>🤖</span>安卓 · 安装成 App<small>浏览器菜单 → 安装</small></div>
+        <div class="row" onclick="App.installHint('i')"><span>🍎</span>iPhone · 安装成 App<small>Safari → 添加到主屏幕</small></div>
+      </div>
+      <div class="sec">关于</div>
+      <div class="set">
+        <div class="row" style="cursor:default"><span>ℹ️</span>GOBA Office 手机版 1.1<small>数据只存本机</small></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 文档编辑器 -->
+  <div class="editor" id="ed">
+    <div class="e-top">
+      <button class="bk" onclick="App.closeDoc()">‹ 完成</button>
+      <input id="ed-title" placeholder="标题">
+      <div class="act"><button class="tbtn" onclick="App.exportDoc()">导出</button></div>
+    </div>
+    <div class="e-tools">
+      <button onclick="App.fmt('bold')"><b>B</b></button>
+      <button onclick="App.fmt('italic')"><i>I</i></button>
+      <button onclick="App.fmt('underline')"><u>U</u></button>
+      <button onclick="App.fmt('formatBlock','h1')">H1</button>
+      <button onclick="App.fmt('formatBlock','h2')">H2</button>
+      <button onclick="App.fmt('formatBlock','p')">正文</button>
+      <button onclick="App.fmt('insertUnorderedList')">• 列表</button>
+      <button onclick="App.fmt('insertOrderedList')">1. 列表</button>
+    </div>
+    <div class="e-body" id="ed-body" contenteditable="true" oninput="App.saveDocSoon()"></div>
+  </div>
+
+  <!-- 表格 -->
+  <div class="editor" id="sg">
+    <div class="e-top">
+      <button class="bk" onclick="App.closeSheet()">‹ 完成</button>
+      <input id="sg-title" placeholder="表格名">
+      <div class="act"><button class="tbtn" onclick="App.exportSheet()">导出</button></div>
+    </div>
+    <div style="flex:1;overflow:auto;padding:12px 14px">
+      <div class="sheetbox" id="sg-box"></div>
+      <div class="cellbar">
+        <input id="sg-in" placeholder="点上面的格子，在这里输入" onkeydown="if(event.key==='Enter')App.setCell()">
+        <button onclick="App.setCell()">好</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 调色 -->
+  <div class="editor" id="cl">
+    <div class="e-top">
+      <button class="bk" onclick="App.closeTone()">‹ 完成</button>
+      <b style="flex:1;font-size:15px">照片调色</b>
+      <div class="act">
+        <button class="tbtn" onclick="document.getElementById('cl-file').click()">换图</button>
+        <button class="tbtn red" onclick="App.exportTone()">导出</button>
+      </div>
+    </div>
+    <div class="cl-cv" id="cl-cv">
+      <canvas id="cl-canvas"></canvas>
+      <div class="empty" id="cl-empty" onclick="document.getElementById('cl-file').click()">📷 点这里选一张照片开始调色</div>
+    </div>
+    <input type="file" id="cl-file" accept="image/*" style="display:none" onchange="App.toneFile(this)">
+    <div class="presets" id="cl-presets"></div>
+    <div style="flex:none;border-top:1px solid var(--line);background:#fff;max-height:42dvh;overflow-y:auto" id="cl-sliders"></div>
+  </div>
+
+  <!-- 3D -->
+  <div class="editor" id="m3">
+    <div class="e-top">
+      <button class="bk" onclick="App.close3D()">‹ 完成</button>
+      <b style="flex:1;font-size:15px">3D 建模</b>
+      <div class="act"><button class="tbtn red" onclick="App.export3D()">导出 OBJ</button></div>
+    </div>
+    <div class="e-tools">
+      <button onclick="M3.add('box')">＋方块</button>
+      <button onclick="M3.add('sphere')">＋球</button>
+      <button onclick="M3.add('cylinder')">＋圆柱</button>
+      <button onclick="M3.add('torus')">＋圆环</button>
+      <button onclick="M3.del()">🗑 删除</button>
+      <label style="font-size:13px;display:flex;align-items:center;gap:4px;padding:0 6px;color:var(--ink)">颜色<input type="color" id="m3-color" value="#e0281c" onchange="M3.setColor(this.value)"></label>
+    </div>
+    <div class="m3d-cv" id="m3-cv">
+      <div class="m3d-tip">单指旋转视角 · 双指捏合缩放 · 点一下选中物体</div>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <button class="tab on" data-v="v-docs" onclick="App.go('v-docs',this)"><span class="ti">📄</span>文档</button>
+    <button class="tab" data-v="v-sheets" onclick="App.go('v-sheets',this)"><span class="ti">📊</span>表格</button>
+    <button class="tab" data-v="v-notes" onclick="App.go('v-notes',this)"><span class="ti">⚡</span>速记</button>
+    <button class="tab" data-v="v-tone" onclick="App.go('v-tone',this)"><span class="ti">🎨</span>调色</button>
+    <button class="tab" data-v="v-3d" onclick="App.go('v-3d',this)"><span class="ti">🧊</span>3D</button>
+    <button class="tab" data-v="v-me" onclick="App.go('v-me',this)"><span class="ti">⚙</span>我的</button>
+  </div>
+
+  <div class="mask" id="mask" onclick="App.hideMask()"><div class="sheet-m" id="mask-body" onclick="event.stopPropagation()"></div></div>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
+
+const App = {
+  db: { docs: [], sheets: [], notes: [] },
+  curDoc: null, curSheet: null, curCell: null,
+
+  load() { try { this.db = Object.assign({ docs: [], sheets: [], notes: [] }, JSON.parse(localStorage.getItem("goba-m") || "{}")); } catch (e) { this.db = { docs: [], sheets: [], notes: [] }; } },
+  save() { localStorage.setItem("goba-m", JSON.stringify(this.db)); },
+  esc(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); },
+  fmtTime(ts) { const d = new Date(ts); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; },
+
+  toast(m) { const t = document.getElementById("toast"); t.textContent = m; t.classList.add("on"); clearTimeout(this._tt); this._tt = setTimeout(() => t.classList.remove("on"), 2200); },
+
+  go(v, btn) {
+    document.querySelectorAll(".view").forEach(x => x.classList.toggle("on", x.id === v));
+    document.querySelectorAll("#tabs .tab").forEach(x => x.classList.toggle("on", x === btn));
+    this.renderAll();
+    document.getElementById("main").scrollTop = 0;
+  },
+
+  renderAll() { this.renderDocs(); this.renderSheets(); this.renderNotes(); },
+
+  /* ---------- 文档 ---------- */
+  renderDocs() {
+    const el = document.getElementById("docs-list");
+    if (!this.db.docs.length) { el.innerHTML = `<div class="empty">还没有文档<br>点右下角 ＋ 开一篇</div>`; return; }
+    el.innerHTML = this.db.docs.slice().sort((a, b) => b.ts - a.ts).map(d =>
+      `<div class="item" onclick="App.openDoc('${d.id}')">
+        <div class="ic doc">📄</div>
+        <div class="tt"><b>${this.esc(d.title || "无标题")}</b><small>${this.fmtTime(d.ts)} · ${d.html.replace(/<[^>]+>/g, "").length} 字</small></div>
+        <button class="del" onclick="event.stopPropagation();App.del('docs','${d.id}')">✕</button>
+      </div>`).join("");
+  },
+  newDoc() {
+    const d = { id: "d" + Date.now().toString(36), title: "", html: "", ts: Date.now() };
+    this.db.docs.push(d); this.save(); this.openDoc(d.id);
+  },
+  openDoc(id) {
+    this.curDoc = this.db.docs.find(x => x.id === id); if (!this.curDoc) return;
+    document.getElementById("ed-title").value = this.curDoc.title || "";
+    document.getElementById("ed-body").innerHTML = this.curDoc.html || "";
+    document.getElementById("ed").classList.add("on");
+  },
+  saveDocSoon() { clearTimeout(this._ds); this._ds = setTimeout(() => this.saveDoc(), 600); },
+  saveDoc() {
+    if (!this.curDoc) return;
+    this.curDoc.title = document.getElementById("ed-title").value.trim();
+    this.curDoc.html = document.getElementById("ed-body").innerHTML;
+    this.curDoc.ts = Date.now(); this.save(); this.renderDocs();
+  },
+  closeDoc() { this.saveDoc(); document.getElementById("ed").classList.remove("on"); this.renderDocs(); },
+  fmt(cmd, v) { document.getElementById("ed-body").focus(); document.execCommand(cmd, false, v || null); this.saveDocSoon(); },
+
+  /* ---------- 表格 ---------- */
+  renderSheets() {
+    const el = document.getElementById("sheets-list");
+    if (!this.db.sheets.length) { el.innerHTML = `<div class="empty">还没有表格<br>点右下角 ＋ 建一张</div>`; return; }
+    el.innerHTML = this.db.sheets.slice().sort((a, b) => b.ts - a.ts).map(s =>
+      `<div class="item" onclick="App.openSheet('${s.id}')">
+        <div class="ic sheet">📊</div>
+        <div class="tt"><b>${this.esc(s.name || "未命名表格")}</b><small>${this.fmtTime(s.ts)} · ${s.rows} 行 ${s.cols} 列</small></div>
+        <button class="del" onclick="event.stopPropagation();App.del('sheets','${s.id}')">✕</button>
+      </div>`).join("");
+  },
+  newSheet() {
+    const s = { id: "s" + Date.now().toString(36), name: "", rows: 20, cols: 6, data: {}, style: {}, ts: Date.now() };
+    for (let c = 0; c < s.cols; c++) s.data[this.colName(c) + "1"] = "";
+    this.db.sheets.push(s); this.save(); this.openSheet(s.id);
+  },
+  colName(i) { let s = ""; i++; while (i > 0) { s = String.fromCharCode(65 + (i - 1) % 26) + s; i = Math.floor((i - 1) / 26); } return s; },
+  key(r, c) { return this.colName(c) + (r + 1); },
+  openSheet(id) {
+    this.curSheet = this.db.sheets.find(x => x.id === id); if (!this.curSheet) return;
+    document.getElementById("sg-title").value = this.curSheet.name || "";
+    this.curCell = null; this.drawSheet();
+    document.getElementById("sg").classList.add("on");
+  },
+  drawSheet() {
+    const s = this.curSheet; let h = "<table class='sheet'><thead><tr><th></th>";
+    for (let c = 0; c < s.cols; c++) h += `<th>${this.colName(c)}</th>`;
+    h += "</tr></thead><tbody>";
+    for (let r = 0; r < s.rows; r++) {
+      h += `<tr><th>${r + 1}</th>`;
+      for (let c = 0; c < s.cols; c++) {
+        const k = this.key(r, c), v = s.data[k] ?? "";
+        h += `<td data-k="${k}" class="${this.curCell === k ? "cur" : ""}" onclick="App.pickCell('${k}')">${this.esc(String(v).startsWith("=") ? this.eval1(v) : v)}</td>`;
+      }
+      h += "</tr>";
+    }
+    document.getElementById("sg-box").innerHTML = h + "</tbody></table>";
+  },
+  eval1(f) {
+    try { const e = f.slice(1).toUpperCase().replace(/([A-Z]+)(\d+)/g, (_, a, b) => "N(" + (this.curSheet.data[a + b] ?? 0) + ")"); return Math.round(Function("N", "return " + e)(x => x) * 100) / 100; } catch (e) { return "#ERR"; }
+  },
+  pickCell(k) {
+    this.curCell = k;
+    const inp = document.getElementById("sg-in");
+    inp.value = this.curSheet.data[k] ?? "";
+    this.drawSheet(); inp.focus();
+  },
+  setCell() {
+    if (!this.curCell) return this.toast("先点一个格子");
+    const v = document.getElementById("sg-in").value;
+    if (v) this.curSheet.data[this.curCell] = v; else delete this.curSheet.data[this.curCell];
+    this.curSheet.ts = Date.now(); this.save(); this.drawSheet(); this.renderSheets();
+    document.getElementById("sg-in").focus();
+  },
+  closeSheet() {
+    this.curSheet.name = document.getElementById("sg-title").value.trim();
+    this.curSheet.ts = Date.now(); this.save();
+    document.getElementById("sg").classList.remove("on"); this.renderSheets();
+  },
+
+  /* ---------- 速记 ---------- */
+  renderNotes() {
+    const el = document.getElementById("notes-list");
+    if (!this.db.notes.length) { el.innerHTML = `<div class="empty">随手记，想起来就写</div>`; return; }
+    el.innerHTML = this.db.notes.slice().sort((a, b) => b.ts - a.ts).map(n =>
+      `<div class="item"><div class="ic note">⚡</div>
+        <div class="tt"><b style="font-weight:500;white-space:normal;font-size:14px">${this.esc(n.text)}</b><small>${this.fmtTime(n.ts)}</small></div>
+        <button class="del" onclick="App.del('notes','${n.id}')">✕</button></div>`).join("");
+  },
+  addNote() {
+    const inp = document.getElementById("note-in"), v = inp.value.trim();
+    if (!v) return;
+    this.db.notes.push({ id: "n" + Date.now().toString(36), text: v, ts: Date.now() });
+    inp.value = ""; this.save(); this.renderNotes(); this.toast("记下了");
+  },
+
+  /* ---------- 通用 ---------- */
+  del(kind, id) {
+    this.db[kind] = this.db[kind].filter(x => x.id !== id); this.save(); this.renderAll();
+  },
+  fileOf(kind, obj) {
+    if (kind === "doc") return { name: (obj.title || "文档") + ".gdoc", json: JSON.stringify({ app: "GOBA Office", format: 1, type: "doc", title: obj.title, html: obj.html, meta: { modified: obj.ts } }) };
+    return { name: (obj.name || "表格") + ".gsheet", json: JSON.stringify({ app: "GOBA Office", format: 1, type: "sheet", name: obj.name, rows: obj.rows, cols: obj.cols, data: obj.data, style: obj.style, meta: { modified: obj.ts } }) };
+  },
+  async share(kind, obj) {
+    const f = this.fileOf(kind, obj);
+    const file = new File([f.json], f.name, { type: "application/json" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: f.name }); return "shared"; } catch (e) { if (e && e.name === "AbortError") return "cancel"; }
+    }
+    this.download(f.json, f.name); return "saved";
+  },
+  download(text, name) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+    a.download = name; a.click();
+  },
+  exportDoc() { this.saveDoc(); const r = this.share("doc", this.curDoc); this.toast(r === "shared" ? "弹出分享面板：选微信就能发" : "已导出 .gdoc"); },
+  exportSheet() { this.closeSheetLater(); const r = this.share("sheet", this.curSheet); this.toast(r === "shared" ? "弹出分享面板：选微信就能发" : "已导出 .gsheet"); },
+  closeSheetLater() { this.curSheet.name = document.getElementById("sg-title").value.trim(); this.curSheet.ts = Date.now(); this.save(); },
+
+  importFile(inp) {
+    const f = inp.files[0]; if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      try {
+        const c = JSON.parse(rd.result);
+        if (c.type === "doc") { this.db.docs.push({ id: "d" + Date.now().toString(36), title: (c.title || "导入文档") + "", html: c.html || "", ts: Date.now() }); this.toast("文档已导入"); }
+        else if (c.type === "sheet") { this.db.sheets.push({ id: "s" + Date.now().toString(36), name: (c.name || "导入表格") + "", rows: c.rows || 20, cols: c.cols || 6, data: c.data || {}, style: c.style || {}, ts: Date.now() }); this.toast("表格已导入"); }
+        else if (c.docs || c.sheets || c.notes) { this.db = Object.assign({ docs: [], sheets: [], notes: [] }, c); this.toast("备份已恢复"); }
+        else { this.toast("认不出这个文件"); return; }
+        this.save(); this.renderAll();
+      } catch (e) { this.toast("文件读不出来"); }
+    };
+    rd.readAsText(f); inp.value = "";
+  },
+  backup() { this.download(JSON.stringify(this.db), "GOBA备份-" + new Date().toISOString().slice(0, 10) + ".json"); this.toast("备份已导出"); },
+  wipe() {
+    this.showMask(`<h3>清空全部？</h3>
+      <div class="row" style="color:var(--red)" onclick="App._wipe()">真删，不后悔</div>
+      <div class="row" onclick="App.hideMask()">先不了</div>`);
+  },
+  _wipe() { localStorage.removeItem("goba-m"); this.db = { docs: [], sheets: [], notes: [] }; this.renderAll(); this.hideMask(); this.toast("清干净了"); },
+
+  shareHint() { this.showMask(`<h3>怎么传给微信</h3>
+    <div class="row" style="cursor:default">文档 / 表格右上角点「导出」→ 弹出分享面板 → 选微信 → 发给好友或文件传输助手</div>
+    <div class="row" style="cursor:default">电脑版做的 .gdoc / .gsheet 发过来后，在「我的 → 导入」接着改</div>
+    <div class="row" onclick="App.hideMask()" style="color:var(--blue)">知道了</div>`); },
+  installHint(os) {
+    const m = os === "i"
+      ? `<h3>iPhone 装成 App</h3><div class="row" style="cursor:default">1. 用 Safari 打开这个页面</div>
+         <div class="row" style="cursor:default">2. 底部中间「分享」按钮 → 拉到底「添加到主屏幕」</div>
+         <div class="row" style="cursor:default">3. 主屏出现红 G 图标，全屏打开，跟 App 一样</div>
+         <div class="row" onclick="App.hideMask()" style="color:var(--blue)">知道了</div>`
+      : `<h3>安卓装成 App</h3><div class="row" style="cursor:default">1. 用 Chrome / Edge 打开这个页面</div>
+         <div class="row" style="cursor:default">2. 浏览器菜单 → 「安装应用」/「添加到主屏幕」</div>
+         <div class="row" style="cursor:default">3. 桌面出图标，独立窗口打开</div>
+         <div class="row" onclick="App.hideMask()" style="color:var(--blue)">知道了</div>`;
+    this.showMask(m);
+  },
+  showMask(html) { document.getElementById("mask-body").innerHTML = html; document.getElementById("mask").classList.add("on"); },
+  hideMask() { document.getElementById("mask").classList.remove("on"); },
+
+  /* ---------- 调色（Tone） ---------- */
+  openTone() {
+    document.getElementById("cl").classList.add("on");
+    if (this._toneInited) return; this._toneInited = true;
+    const pr = document.getElementById("cl-presets"), sl = document.getElementById("cl-sliders");
+    pr.innerHTML = Object.keys(Tone.presets).map(n => `<button data-p="${n}" onclick="Tone.preset('${n}')">${n}</button>`).join("");
+    sl.innerHTML = Tone.defs.map(d =>
+      `<div class="srow"><label>${d[1]}</label><input type="range" min="${d[2]}" max="${d[3]}" value="${d[4]}" oninput="Tone.set('${d[0]}',this.value)"><b id="s-${d[0]}">${d[4]}</b></div>`).join("");
+  },
+  closeTone() { document.getElementById("cl").classList.remove("on"); },
+  toneFile(inp) {
+    const f = inp.files[0]; if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => { const im = new Image(); im.onload = () => { Tone.img = im; Tone.render(); document.getElementById("cl-empty").style.display = "none"; }; im.src = rd.result; };
+    rd.readAsDataURL(f); inp.value = "";
+  },
+  exportTone() {
+    const cv = document.getElementById("cl-canvas");
+    if (!Tone.img) return this.toast("先选一张照片");
+    cv.toBlob(b => {
+      const file = new File([b], "GOBA调色-" + Date.now() + ".png", { type: "image/png" });
+      if (navigator.canShare && navigator.canShare({ files: [file] }))
+        navigator.share({ files: [file] }).catch(() => {});
+      else { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = file.name; a.click(); }
+      this.toast("已导出 PNG");
+    }, "image/png");
+  },
+
+  /* ---------- 3D（M3） ---------- */
+  open3D() {
+    document.getElementById("m3").classList.add("on");
+    if (this._m3Inited) return; this._m3Inited = true;
+    if (window.THREE) { M3.init(); return; }
+    const s = document.createElement("script");
+    s.src = "../three.min.js";
+    s.onload = () => M3.init();
+    s.onerror = () => this.toast("3D 内核没加载出来，联网后重试一次");
+    document.head.appendChild(s);
+  },
+  close3D() { M3.pause(); document.getElementById("m3").classList.remove("on"); },
+  export3D() {
+    const txt = M3.objText();
+    if (!txt) return this.toast("场景还是空的，先加个方块");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([txt], { type: "text/plain" }));
+    a.download = "GOBA模型-" + Date.now() + ".obj"; a.click(); this.toast("OBJ 已导出");
+  },
+};
+const Tone = {
+  img: null, _base: null,
+  defs: [
+    ["bright", "亮度", 50, 150, 100], ["contrast", "对比", 50, 150, 100], ["sat", "饱和", 0, 200, 100],
+    ["hue", "色相", -180, 180, 0], ["temp", "色温", -100, 100, 0], ["vig", "暗角", 0, 100, 0], ["blur", "模糊", 0, 10, 0],
+  ],
+  presets: {
+    "原片": null,
+    "鲜明": { bright: 108, contrast: 118, sat: 132 },
+    "暖阳": { bright: 104, contrast: 105, sat: 112, temp: 45 },
+    "冷调": { bright: 100, contrast: 110, sat: 106, temp: -45 },
+    "黑白": { sat: 0, contrast: 115 },
+    "胶片": { bright: 98, contrast: 108, sat: 88, temp: 18, vig: 35 },
+  },
+  defaults() { const d = {}; this.defs.forEach(x => d[x[0]] = x[4]); return d; },
+  p: null,
+  set(k, v) { this.p[k] = +v; document.getElementById("s-" + k).textContent = v; this.presetName(""); this.render(); },
+  preset(name) {
+    this.p = this.defaults();
+    const cfg = this.presets[name]; if (cfg) Object.assign(this.p, cfg);
+    Tone.defs.forEach(d => {
+      const r = document.querySelector(`#cl-sliders input[oninput*="'${d[0]}'"]`);
+      if (r) { r.value = this.p[d[0]]; document.getElementById("s-" + d[0]).textContent = this.p[d[0]]; }
+    });
+    this.presetName(name); this.render();
+  },
+  presetName(name) {
+    document.querySelectorAll("#cl-presets button").forEach(b => b.classList.toggle("on", b.dataset.p === name));
+  },
+  render() {
+    if (!this.img) return;
+    const cv = document.getElementById("cl-canvas"), im = this.img;
+    cv.width = im.naturalWidth; cv.height = im.naturalHeight;
+    cv.style.display = "block";
+    const ctx = cv.getContext("2d"), p = this.p;
+    ctx.filter = `brightness(${p.bright}%) contrast(${p.contrast}%) saturate(${p.sat}%) hue-rotate(${p.hue}deg)` + (p.blur ? ` blur(${p.blur}px)` : "");
+    ctx.drawImage(im, 0, 0);
+    ctx.filter = "none";
+    if (p.temp) {
+      const w = cv.width, h = cv.height;
+      ctx.save();
+      ctx.globalCompositeOperation = "soft-light";
+      ctx.fillStyle = p.temp > 0 ? `rgba(255,150,40,${Math.abs(p.temp) / 130})` : `rgba(50,120,255,${Math.abs(p.temp) / 130})`;
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+    }
+    if (p.vig) {
+      const w = cv.width, h = cv.height, r = Math.hypot(w, h) / 2;
+      const g = ctx.createRadialGradient(w / 2, h / 2, r * 0.45, w / 2, h / 2, r);
+      g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, `rgba(0,0,0,${p.vig / 110})`);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    }
+  },
+};
+Tone.p = Tone.defaults();
+
+/* 3D 工坊 */
+const M3 = {
+  inited: false, objs: [], sel: null, _raf: 0,
+  cam: null, th: 0.8, ph: 1.1, rad: 7, scene: null, renderer: null, ray: null,
+  nextCol: 0, cols: ["#e0281c", "#0a84ff", "#34c759", "#ff9500", "#af52de", "#00b8ba"],
+  init() {
+    if (this.inited) return; this.inited = true;
+    const box = document.getElementById("m3-cv");
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0x1c1e26);
+    this.scene.add(new THREE.HemisphereLight(0xcfd6ff, 0x3a3242, 1.0));
+    const dl = new THREE.DirectionalLight(0xffffff, 1.6); dl.position.set(5, 8, 6); this.scene.add(dl);
+    const grid = new THREE.GridHelper(20, 20, 0x4a5068, 0x2c3042); this.scene.add(grid);
+    this.cam = new THREE.PerspectiveCamera(55, 1, 0.1, 200);
+    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    box.appendChild(this.renderer.domElement);
+    this.ray = new THREE.Raycaster();
+    this._bind(box);
+    this.add("box");
+    this.loop();
+  },
+  make(geo) {
+    const c = new THREE.Color(this.cols[this.nextCol++ % this.cols.length]);
+    const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: c, roughness: 0.55, metalness: 0.15 }));
+    m.position.y = 1; this.scene.add(m); this.objs.push(m); this.pick(m);
+    return m;
+  },
+  add(kind) {
+    const g = {
+      box: () => new THREE.BoxGeometry(2, 2, 2),
+      sphere: () => new THREE.SphereGeometry(1.2, 32, 20),
+      cylinder: () => new THREE.CylinderGeometry(1, 1, 2.2, 28),
+      torus: () => new THREE.TorusGeometry(1.1, 0.42, 18, 40),
+    }[kind]();
+    this.make(g);
+  },
+  del() { if (!this.sel) return this.toast3("先点一个物体"); this.scene.remove(this.sel); this.objs = this.objs.filter(o => o !== this.sel); this.sel = null; },
+  setColor(hex) { if (this.sel) this.sel.material.color.set(hex); },
+  pick(o) {
+    if (this.sel) this.sel.material.emissive = new THREE.Color(0x000000);
+    this.sel = o;
+    if (o) o.material.emissive = new THREE.Color(0x1a3a66);
+  },
+  toast3(m) { App.toast(m); },
+  _bind(box) {
+    let t0 = null, pinch = 0, moved = 0;
+    box.addEventListener("touchstart", e => {
+      moved = 0;
+      if (e.touches.length === 2) pinch = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      t0 = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+    }, { passive: true });
+    box.addEventListener("touchmove", e => {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        const dx = e.touches[0].clientX - t0.x, dy = e.touches[0].clientY - t0.y;
+        moved += Math.abs(dx) + Math.abs(dy);
+        this.th -= dx * 0.006; this.ph = Math.min(1.52, Math.max(0.12, this.ph - dy * 0.006));
+        t0 = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      } else if (e.touches.length === 2) {
+        const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+        if (pinch) this.rad = Math.min(30, Math.max(2.5, this.rad * pinch / d));
+        pinch = d;
+      }
+    }, { passive: false });
+    box.addEventListener("touchend", e => {
+      if (moved < 10 && t0 && Date.now() - t0.t < 400) this._tap(e.changedTouches[0], box);
+    });
+    // 鼠标（电脑浏览器里也能玩）
+    let md = null;
+    box.addEventListener("mousedown", e => md = { x: e.clientX, y: e.clientY, mv: 0 });
+    box.addEventListener("mousemove", e => { if (!md) return; this.th -= (e.clientX - md.x) * 0.006; this.ph = Math.min(1.52, Math.max(0.12, this.ph - (e.clientY - md.y) * 0.006)); md.mv += Math.abs(e.clientX - md.x) + Math.abs(e.clientY - md.y); md = { x: e.clientX, y: e.clientY, mv: md.mv }; });
+    box.addEventListener("mouseup", e => { if (md && md.mv < 6) this._tap(e, box); md = null; });
+    box.addEventListener("wheel", e => { e.preventDefault(); this.rad = Math.min(30, Math.max(2.5, this.rad * (1 + Math.sign(e.deltaY) * 0.1))); }, { passive: false });
+  },
+  _tap(pt, box) {
+    const r = box.getBoundingClientRect();
+    const ndc = new THREE.Vector2(((pt.clientX - r.left) / r.width) * 2 - 1, -((pt.clientY - r.top) / r.height) * 2 + 1);
+    this.ray.setFromCamera(ndc, this.cam);
+    const hit = this.ray.intersectObjects(this.objs)[0];
+    this.pick(hit ? hit.object : null);
+    if (hit) document.getElementById("m3-color").value = "#" + hit.object.material.color.getHexString();
+  },
+  _place() {
+    const x = Math.sin(this.th) * Math.cos(this.ph), y = Math.sin(this.ph), z = Math.cos(this.th) * Math.cos(this.ph);
+    this.cam.position.set(x * this.rad, y * this.rad + 1.5, z * this.rad);
+    this.cam.lookAt(0, 1, 0);
+  },
+  resize() {
+    const box = document.getElementById("m3-cv");
+    if (!box.clientWidth) return;
+    this.renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1));
+    this.renderer.setSize(box.clientWidth, box.clientHeight);
+    this.cam.aspect = box.clientWidth / box.clientHeight; this.cam.updateProjectionMatrix();
+  },
+  loop() {
+    this._raf = requestAnimationFrame(() => this.loop());
+    this.resize(); this._place();
+    this.renderer.render(this.scene, this.cam);
+  },
+  pause() { cancelAnimationFrame(this._raf); this._raf = 0; },
+  objText() {
+    if (!this.objs.length) return "";
+    let out = "# GOBA Office 手机版导出\n", base = 1;
+    const v = new THREE.Vector3();
+    this.objs.forEach((o, i) => {
+      out += `o part${i + 1}\n`;
+      const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry;
+      const pos = g.attributes.position;
+      for (let k = 0; k < pos.count; k++) { v.fromBufferAttribute(pos, k).applyMatrix4(o.matrixWorld); out += `v ${v.x.toFixed(4)} ${v.y.toFixed(4)} ${v.z.toFixed(4)}\n`; }
+      for (let k = 0; k < pos.count; k += 3) out += `f ${base + k} ${base + k + 1} ${base + k + 2}\n`;
+      base += pos.count;
+    });
+    return out;
+  },
+};
+
+App.load(); App.renderAll();
+</script>
+</body>
+</html>
